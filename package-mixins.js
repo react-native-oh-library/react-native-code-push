@@ -1,6 +1,6 @@
-import { NativeEventEmitter } from "react-native";
+import { NativeEventEmitter, DeviceEventEmitter } from "react-native";
 import log from "./logging";
-
+let info = null;
 // This function is used to augment remote and local
 // package objects with additional functionality/properties
 // beyond what is included in the metadata sent by the server.
@@ -27,14 +27,13 @@ module.exports = (NativeCodePush) => {
         try {
           const updatePackageCopy = Object.assign({}, this);
           Object.keys(updatePackageCopy).forEach((key) => (typeof updatePackageCopy[key] === 'function') && delete updatePackageCopy[key]);
-
+          info = updatePackageCopy;
           const downloadedPackage = await NativeCodePush.downloadUpdate(updatePackageCopy, !!downloadProgressCallback);
-
           if (reportStatusDownload) {
             reportStatusDownload(this)
-            .catch((err) => {
-              log(`Report download status failed: ${err}`);
-            });
+              .catch((err) => {
+                log(`Report download status failed: ${err}`);
+              });
           }
 
           return { ...downloadedPackage, ...local };
@@ -48,17 +47,12 @@ module.exports = (NativeCodePush) => {
   };
 
   const local = {
-    async install(installMode = NativeCodePush.codePushInstallModeOnNextRestart, minimumBackgroundDuration = 0, updateInstalledCallback) {
+    async install(installMode = 0, minimumBackgroundDuration = 0, updateInstalledCallback) {
       const localPackage = this;
       const localPackageCopy = Object.assign({}, localPackage); // In dev mode, React Native deep freezes any object queued over the bridge
-      await NativeCodePush.installUpdate(localPackageCopy, installMode, minimumBackgroundDuration);
+      await NativeCodePush.installUpdate(info, installMode, minimumBackgroundDuration);
       updateInstalledCallback && updateInstalledCallback();
-      if (installMode == NativeCodePush.codePushInstallModeImmediate) {
-        NativeCodePush.restartApp(false);
-      } else {
-        NativeCodePush.clearPendingRestart();
-        localPackage.isPending = true; // Mark the package as pending since it hasn't been applied yet
-      }
+      NativeCodePush.restartApp(false);
     },
 
     isPending: false // A local package wouldn't be pending until it was installed

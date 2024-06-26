@@ -1,35 +1,27 @@
 {
-  "name": "react-native-code-push",
-  "version": "8.2.2",
+  "name": "@react-native-oh-tpl/react-native-code-push",
+  "version": "8.2.2-0.0.1",
   "description": "React Native plugin for the CodePush service",
   "main": "CodePush.js",
   "typings": "typings/react-native-code-push.d.ts",
   "homepage": "https://microsoft.github.io/code-push",
   "keywords": [
+    "harmony",
     "react-native",
     "code",
     "push"
   ],
+  "harmony": {
+    "alias": "react-native-code-push",
+    "codegenConfig": {
+      "specPaths": [
+        "./src"
+      ]
+    }
+  },
   "author": "Microsoft Corporation",
   "license": "MIT",
-  "scripts": {
-    "clean": "shx rm -rf bin",
-    "setup": "npm install --quiet --no-progress",
-    "prebuild:tests": "npm run clean && npm run tslint",
-    "build:tests": "tsc",
-    "test": "npm run build:tests && npm run test:setup && npm run test:fast",
-    "test:android": "npm run build:tests && npm run test:setup:android && npm run test:fast:android",
-    "test:ios": "npm run build:tests && npm run test:setup:ios && npm run test:fast:ios",
-    "test:setup": "mocha --recursive bin/test --android --ios --setup",
-    "test:setup:android": "mocha --recursive bin/test --android --setup",
-    "test:setup:ios": "mocha --recursive bin/test --ios --setup",
-    "test:fast": "mocha --recursive bin/test --android --ios",
-    "test:fast:android": "mocha --recursive bin/test --android",
-    "test:fast:ios": "mocha --recursive bin/test --ios",
-    "test:debugger:android": "mocha --recursive --inspect-brk=0.0.0.0 bin/test --android",
-    "test:debugger:ios": "mocha --recursive --inspect-brk=0.0.0.0 bin/test --ios",
-    "tslint": "tslint -c tslint.json test/**/*.ts"
-  },
+  "scripts": {},
   "repository": {
     "type": "git",
     "url": "https://github.com/microsoft/react-native-code-push"
@@ -64,14 +56,6 @@
     "typescript": "^4.4.3"
   },
   "rnpm": {
-    "android": {
-      "packageInstance": "new CodePush(getResources().getString(R.string.CodePushDeploymentKey), getApplicationContext(), BuildConfig.DEBUG)"
-    },
-    "ios": {
-      "sharedLibraries": [
-        "libz"
-      ]
-    },
     "commands": {
       "postlink": "node node_modules/react-native-code-push/scripts/postlink/run",
       "postunlink": "node node_modules/react-native-code-push/scripts/postunlink/run"
