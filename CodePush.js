@@ -1,45 +1,17 @@
 import { AcquisitionManager as Sdk } from "code-push/script/acquisition-sdk";
 import { Alert } from "./AlertAdapter";
 import requestFetchAdapter from "./request-fetch-adapter";
-import { AppState, Platform } from "react-native";
+import { AppState, Platform, DeviceEventEmitter } from "react-native";
 import log from "./logging";
 import hoistStatics from 'hoist-non-react-statics';
+import NativeCodePush from './src/NativeCodePush';
 
-let NativeCodePush = require("react-native").NativeModules.CodePush;
 const PackageMixins = require("./package-mixins")(NativeCodePush);
-
 async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchCallback = null) {
-  /*
-   * Before we ask the server if an update exists, we
-   * need to retrieve three pieces of information from the
-   * native side: deployment key, app version (e.g. 1.0.1)
-   * and the hash of the currently running update (if there is one).
-   * This allows the client to only receive updates which are targetted
-   * for their specific deployment and version and which are actually
-   * different from the CodePush update they have already installed.
-   */
   const nativeConfig = await getConfiguration();
-  /*
-   * If a deployment key was explicitly provided,
-   * then let's override the one we retrieved
-   * from the native-side of the app. This allows
-   * dynamically "redirecting" end-users at different
-   * deployments (e.g. an early access deployment for insiders).
-   */
   const config = deploymentKey ? { ...nativeConfig, ...{ deploymentKey } } : nativeConfig;
   const sdk = getPromisifiedSdk(requestFetchAdapter, config);
-
-  // Use dynamically overridden getCurrentPackage() during tests.
   const localPackage = await module.exports.getCurrentPackage();
-
-  /*
-   * If the app has a previously installed update, and that update
-   * was targetted at the same app version that is currently running,
-   * then we want to use its package hash to determine whether a new
-   * release has been made on the server. Otherwise, we only need
-   * to send the app version to the server, since we are interested
-   * in any updates for current binary version, regardless of hash.
-   */
   let queryPackage;
   if (localPackage) {
     queryPackage = localPackage;
@@ -49,30 +21,10 @@ async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchC
       queryPackage.packageHash = config.packageHash;
     }
   }
-
   const update = await sdk.queryUpdateWithCurrentPackage(queryPackage);
-
-  /*
-   * There are four cases where checkForUpdate will resolve to null:
-   * ----------------------------------------------------------------
-   * 1) The server said there isn't an update. This is the most common case.
-   * 2) The server said there is an update but it requires a newer binary version.
-   *    This would occur when end-users are running an older binary version than
-   *    is available, and CodePush is making sure they don't get an update that
-   *    potentially wouldn't be compatible with what they are running.
-   * 3) The server said there is an update, but the update's hash is the same as
-   *    the currently running update. This should _never_ happen, unless there is a
-   *    bug in the server, but we're adding this check just to double-check that the
-   *    client app is resilient to a potential issue with the update check.
-   * 4) The server said there is an update, but the update's hash is the same as that
-   *    of the binary's currently running version. This should only happen in Android -
-   *    unlike iOS, we don't attach the binary's hash to the updateCheck request
-   *    because we want to avoid having to install diff updates against the binary's
-   *    version, which we can't do yet on Android.
-   */
   if (!update || update.updateAppVersion ||
-      localPackage && (update.packageHash === localPackage.packageHash) ||
-      (!localPackage || localPackage._isDebugOnly) && config.packageHash === update.packageHash) {
+    localPackage && (update.packageHash === localPackage.packageHash) ||
+    (!localPackage || localPackage._isDebugOnly) && config.packageHash === update.packageHash) {
     if (update && update.updateAppVersion) {
       log("An update is available but it is not targeting the binary version of your app.");
       if (handleBinaryVersionMismatchCallback && typeof handleBinaryVersionMismatchCallback === "function") {
@@ -110,7 +62,7 @@ async function getCurrentPackage() {
 async function getUpdateMetadata(updateState) {
   let updateMetadata = await NativeCodePush.getUpdateMetadata(updateState || CodePush.UpdateState.RUNNING);
   if (updateMetadata) {
-    updateMetadata = {...PackageMixins.local, ...updateMetadata};
+    updateMetadata = { ...PackageMixins.local, ...updateMetadata };
     updateMetadata.failedInstall = await NativeCodePush.isFailedUpdate(updateMetadata.packageHash);
     updateMetadata.isFirstRun = await NativeCodePush.isFirstRun(updateMetadata.packageHash);
   }
@@ -159,8 +111,6 @@ function getPromisifiedSdk(requestFetchAdapter, config) {
   return sdk;
 }
 
-// This ensures that notifyApplicationReadyInternal is only called once
-// in the lifetime of this module instance.
 const notifyApplicationReady = (() => {
   let notifyApplicationReadyPromise;
   return () => {
@@ -325,12 +275,12 @@ const sync = (() => {
     }
 
     if (typeof downloadProgressCallback === "function") {
+      DeviceEventEmitter.addListener('CodePushDownloadProgress', (date) => {
+        downloadProgressCallback(date)
+      })
       downloadProgressCallbackWithTryCatch = (...args) => {
-        try {
-          downloadProgressCallback(...args);
-        } catch (error) {
-          log(`An error has occurred: ${error.stack}`);
-        }
+        DeviceEventEmitter.addListener('CodePushDownloadProgress', (date) => {
+        })
       }
     }
 
@@ -351,15 +301,6 @@ const sync = (() => {
   };
 })();
 
-/*
- * The syncInternal method provides a simple, one-line experience for
- * incorporating the check, download and installation of an update.
- *
- * It simply composes the existing API methods together and adds additional
- * support for respecting mandatory updates, ignoring previously failed
- * releases, and displaying a standard confirmation UI to the end-user
- * when an update is available.
- */
 async function syncInternal(options = {}, syncStatusChangeCallback, downloadProgressCallback, handleBinaryVersionMismatchCallback) {
   let resolvedInstallMode;
   const syncOptions = {
@@ -376,45 +317,43 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
   syncStatusChangeCallback = typeof syncStatusChangeCallback === "function"
     ? syncStatusChangeCallback
     : (syncStatus) => {
-        switch(syncStatus) {
-          case CodePush.SyncStatus.CHECKING_FOR_UPDATE:
-            log("Checking for update.");
-            break;
-          case CodePush.SyncStatus.AWAITING_USER_ACTION:
-            log("Awaiting user action.");
-            break;
-          case CodePush.SyncStatus.DOWNLOADING_PACKAGE:
-            log("Downloading package.");
-            break;
-          case CodePush.SyncStatus.INSTALLING_UPDATE:
-            log("Installing update.");
-            break;
-          case CodePush.SyncStatus.UP_TO_DATE:
-            log("App is up to date.");
-            break;
-          case CodePush.SyncStatus.UPDATE_IGNORED:
-            log("User cancelled the update.");
-            break;
-          case CodePush.SyncStatus.UPDATE_INSTALLED:
-            if (resolvedInstallMode == CodePush.InstallMode.ON_NEXT_RESTART) {
-              log("Update is installed and will be run on the next app restart.");
-            } else if (resolvedInstallMode == CodePush.InstallMode.ON_NEXT_RESUME) {
-              if (syncOptions.minimumBackgroundDuration > 0) {
-                log(`Update is installed and will be run after the app has been in the background for at least ${syncOptions.minimumBackgroundDuration} seconds.`);
-              } else {
-                log("Update is installed and will be run when the app next resumes.");
-              }
+      switch (syncStatus) {
+        case CodePush.SyncStatus.CHECKING_FOR_UPDATE:
+          log("Checking for update.");
+          break;
+        case CodePush.SyncStatus.AWAITING_USER_ACTION:
+          log("Awaiting user action.");
+          break;
+        case CodePush.SyncStatus.DOWNLOADING_PACKAGE:
+          log("Downloading package.");
+          break;
+        case CodePush.SyncStatus.INSTALLING_UPDATE:
+          log("Installing update.");
+          break;
+        case CodePush.SyncStatus.UP_TO_DATE:
+          log("App is up to date.");
+          break;
+        case CodePush.SyncStatus.UPDATE_IGNORED:
+          log("User cancelled the update.");
+          break;
+        case CodePush.SyncStatus.UPDATE_INSTALLED:
+          if (resolvedInstallMode == CodePush.InstallMode.ON_NEXT_RESTART) {
+            log("Update is installed and will be run on the next app restart.");
+          } else if (resolvedInstallMode == CodePush.InstallMode.ON_NEXT_RESUME) {
+            if (syncOptions.minimumBackgroundDuration > 0) {
+              log(`Update is installed and will be run after the app has been in the background for at least ${syncOptions.minimumBackgroundDuration} seconds.`);
+            } else {
+              log("Update is installed and will be run when the app next resumes.");
             }
-            break;
-          case CodePush.SyncStatus.UNKNOWN_ERROR:
-            log("An unknown error occurred.");
-            break;
-        }
-      };
+          }
+          break;
+        case CodePush.SyncStatus.UNKNOWN_ERROR:
+          log("An unknown error occurred.");
+          break;
+      }
+    };
 
   try {
-    await CodePush.notifyApplicationReady();
-
     syncStatusChangeCallback(CodePush.SyncStatus.CHECKING_FOR_UPDATE);
     const remotePackage = await checkForUpdate(syncOptions.deploymentKey, handleBinaryVersionMismatchCallback);
 
@@ -435,22 +374,7 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
 
     const updateShouldBeIgnored = await shouldUpdateBeIgnored(remotePackage, syncOptions);
 
-    if (!remotePackage || updateShouldBeIgnored) {
-      if (updateShouldBeIgnored) {
-          log("An update is available, but it is being ignored due to having been previously rolled back.");
-      }
-
-      const currentPackage = await CodePush.getCurrentPackage();
-      if (currentPackage && currentPackage.isPending) {
-        syncStatusChangeCallback(CodePush.SyncStatus.UPDATE_INSTALLED);
-        return CodePush.SyncStatus.UPDATE_INSTALLED;
-      } else {
-        syncStatusChangeCallback(CodePush.SyncStatus.UP_TO_DATE);
-        return CodePush.SyncStatus.UP_TO_DATE;
-      }
-    } else if (syncOptions.updateDialog) {
-      // updateDialog supports any truthy value (e.g. true, "goo", 12),
-      // but we should treat a non-object value as just the default dialog
+    if (syncOptions.updateDialog) {
       if (typeof syncOptions.updateDialog !== "object") {
         syncOptions.updateDialog = CodePush.DEFAULT_UPDATE_DIALOG;
       } else {
@@ -479,12 +403,12 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
             }
           });
         }
-        
+
         // Since the install button should be placed to the 
         // right of any other button, add it last
         dialogButtons.push({
           text: installButtonText,
-          onPress:() => {
+          onPress: () => {
             doDownloadAndInstall()
               .then(resolve, reject);
           }
@@ -525,7 +449,7 @@ function codePushify(options = {}) {
 
   if (!React.Component) {
     throw new Error(
-`Unable to find the "Component" class, please either:
+      `Unable to find the "Component" class, please either:
 1. Upgrade to a newer version of React Native that supports it, or
 2. Call the codePush.sync API in your component instead of using the @codePush decorator`
     );
@@ -573,7 +497,7 @@ function codePushify(options = {}) {
       }
 
       render() {
-        const props = {...this.props};
+        const props = { ...this.props };
 
         // we can set ref property on class components only (not stateless)
         // check it by render method
