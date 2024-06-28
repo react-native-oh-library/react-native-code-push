@@ -11,10 +11,9 @@ import { SettingsManager } from './SettingsManager';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { CodePushUtils } from './CodePushUtils';
 import { CodePushUpdateState } from './CodePushUpdateState';
-import HashMap from '@ohos.util.HashMap';
+
 import { CodePushMalformedDataException } from './CodePushMalformedDataException';
 import { CodePushUnknownException } from './CodePushUnknownException';
-import { CodePushInstallMode } from './CodePushInstallMode';
 import { TM } from '@rnoh/react-native-openharmony/generated/ts';
 
 import Logger from './Logger';
@@ -80,9 +79,9 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
     Logger.info(TAG, `constructor end`)
   }
 
-  async downloadUpdate(updatePackage: HashMap<string, any>, notifyProgress: boolean): Promise<void> {
+  async downloadUpdate(updatePackage: Record<string, any>, notifyProgress: boolean): Promise<void> {
     Logger.info(TAG, `downloadUpdate, updatePackage: ${JSON.stringify(updatePackage)}`)
-    let mutableUpdatePackage: HashMap<string, any> = updatePackage;
+    let mutableUpdatePackage: Record<string, any> = updatePackage;
     mutableUpdatePackage[CodePushConstants.BINARY_MODIFIED_TIME_KEY] = 0
     let bundleFileName: string = 'bundle.harmony.js';
 
@@ -132,61 +131,60 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
   }
 
   async getUpdateMetadata(updateState: number) {
-    this.doInBackgroundForUpdateMetadata(updateState).then((value) => {
-      CodePushUtils.log("getUpdateMetadata result: " + JSON.stringify(value));
-    });
+    return this.doInBackgroundForUpdateMetadata(updateState);
   }
 
-  async doInBackgroundForUpdateMetadata(updateState: number): Promise<void> {
+  async doInBackgroundForUpdateMetadata(updateState: number) {
+    Logger.info(TAG, `doInBackgroundForUpdateMetadata updateState=${updateState}`);
     try {
       let currentPackage = new CodePushUpdateManager('').getCurrentPackage();
       if (!currentPackage) {
         Logger.info(TAG, `currentPackage is empty`);
-        Promise.resolve(null);
-        return;
+        return Promise.resolve(null);
       }
 
       let currentUpdateIsPending: boolean = false;
-      if (currentPackage.hasKey(CodePushConstants.PACKAGE_HASH_KEY)) {
-        let currentHash = currentPackage.get(CodePushConstants.PACKAGE_HASH_KEY);
+      if (currentPackage[CodePushConstants.PACKAGE_HASH_KEY]) {
+        Logger.info(TAG, `currentPackage hasKey packageHash`);
+        let currentHash = currentPackage[CodePushConstants.PACKAGE_HASH_KEY] as string;
         currentUpdateIsPending = new SettingsManager().isPendingUpdate(currentHash);
       }
 
       if (updateState == CodePushUpdateState.PENDING.valueOf() && !currentUpdateIsPending) {
         // The caller wanted a pending update
         // but there isn't currently one.
-        Promise.resolve(null);
+        return Promise.resolve(null);
       } else if (updateState == CodePushUpdateState.RUNNING.valueOf() && currentUpdateIsPending) {
         // The caller wants the running update, but the current
         // one is pending, so we need to grab the previous.
         let previousPackage = new CodePushUpdateManager('').getPreviousPackage();
 
         if (previousPackage == null) {
-          Promise.resolve(null);
-          return;
+          Logger.info(TAG, `currentPackage previousPackage is null`);
+          return Promise.resolve(null);
         }
 
-        Promise.resolve(previousPackage);
+        return Promise.resolve(previousPackage);
       } else {
         if (this.mCodePush.isRunningBinaryVersion()) {
-          currentPackage.set("_isDebugOnly", true);
+          currentPackage["_isDebugOnly"] = true;
         }
         // Enable differentiating pending vs. non-pending updates
-        currentPackage.set("isPending", currentUpdateIsPending);
-        Promise.resolve(currentPackage);
+        currentPackage["isPending"] = currentUpdateIsPending;
+        Logger.info(TAG, `currentPackage currentPackage=${JSON.stringify(currentPackage)}`);
+        return Promise.resolve(currentPackage);
       }
     } catch (e) {
       // We need to recover the app in case 'codepush.json' is corrupted
       if (e instanceof CodePushMalformedDataException) {
         CodePushUtils.log(e.message);
         this.clearUpdates();
-        Promise.resolve(null);
+        return Promise.resolve(null);
       } else if (e instanceof CodePushUnknownException) {
         CodePushUtils.log(e.message);
-        Promise.reject(e);
+        return Promise.reject(e);
       }
     }
-    return null;
   }
 
   async getNewStatusReport(): Promise<void> {
@@ -244,7 +242,7 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
     return null;
   }
 
-  async installUpdate(updatePackage: HashMap<string, any>, installMode: number,
+  async installUpdate(updatePackage: Record<string, any>, installMode: number,
     minimumBackgroundDuration: number): Promise<void> {
 
     try {
@@ -257,8 +255,7 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
       } else {
         new SettingsManager().savePendingUpdate(pendingHash, /* isLoading */false);
       }
-      Logger.info(TAG, 'installPackage--CodePushNativeModule-end3=' + installMode,
-        ' / ' + CodePushInstallMode.IMMEDIATE)
+      Logger.info(TAG, `installPackage--CodePushNativeModule-end3=${installMode},CodePushInstallMode.IMMEDIATE`);
 
       Promise.resolve("");
     } catch (err) {
@@ -315,7 +312,7 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
     }
   }
 
-  async recordStatusReported(statusReport: HashMap<string, any>) {
+  async recordStatusReported(statusReport: Record<string, any>) {
     try {
       new CodePushTelemetryManager(context).recordStatusReported(statusReport);
     } catch (err) {
@@ -323,7 +320,7 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
     }
   }
 
-  async saveStatusReportForRetry(statusReport: HashMap<string, any>) {
+  async saveStatusReportForRetry(statusReport: Record<string, any>) {
     try {
       new CodePushTelemetryManager(context).saveStatusReportForRetry(statusReport);
     } catch (err) {
@@ -386,10 +383,10 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
     let sx_latestJSBundleFile =
       context.filesDir + '/CodePush/' + currentPackageHash + '/bundle.harmony.js'
     const local_address = context.filesDir + '/bundle.harmony.js'
-    Logger.info(TAG, `loadBundle sx_latestJSBundleFile = ${sx_latestJSBundleFile}`);
+    Logger.info(TAG, `loadBundle sx_latestJSBundleFile=${sx_latestJSBundleFile}`);
     let access = fs.accessSync(sx_latestJSBundleFile);
-    Logger.info(TAG, `loadBundle sx_latestJSBundleFile access = ${access}`);
-    Logger.info(TAG, `loadBundle local_address = ${local_address}`);
+    Logger.info(TAG, `loadBundle sx_latestJSBundleFile access=${access}`);
+    Logger.info(TAG, `loadBundle local_address=${local_address}`);
     // 加载下载的bundle包 start
     ///data/app/el2/100/base/com.rnoh.CodeP/haps/entry/files/CodePush/eb6edb31a178973959241cd459aed87aa521d230dff2d53486fcdf4842225ae9
     fs.unlinkSync(local_address);
@@ -397,7 +394,7 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
     try {
       fs.copyFileSync(sx_latestJSBundleFile, local_address);
     } catch (error) {
-      Logger.error(TAG, `restartAppInternal--loadBundle - end, error = ${JSON.stringify(error)}`);
+      Logger.error(TAG, `restartAppInternal--loadBundle-end,error=${JSON.stringify(error)}`);
     }
     Logger.info(TAG, "restartAppInternal--loadBundle-end");
     this.ctx.devToolsController.eventEmitter.emit("RELOAD", { reason: 'HotReload2' })
@@ -420,3 +417,5 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
     })
   }
 }
+
+

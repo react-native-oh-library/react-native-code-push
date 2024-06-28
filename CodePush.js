@@ -8,10 +8,13 @@ import NativeCodePush from './src/NativeCodePush';
 
 const PackageMixins = require("./package-mixins")(NativeCodePush);
 async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchCallback = null) {
+  console.log('checkForUpdate-entry');
   const nativeConfig = await getConfiguration();
   const config = deploymentKey ? { ...nativeConfig, ...{ deploymentKey } } : nativeConfig;
+  console.log('checkForUpdate-config='+JSON.stringify(config));
   const sdk = getPromisifiedSdk(requestFetchAdapter, config);
   const localPackage = await module.exports.getCurrentPackage();
+  console.log('checkForUpdate-localPackage='+JSON.stringify(localPackage));
   let queryPackage;
   if (localPackage) {
     queryPackage = localPackage;
@@ -21,10 +24,13 @@ async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchC
       queryPackage.packageHash = config.packageHash;
     }
   }
+  console.log('checkForUpdate-queryPackage='+JSON.stringify(queryPackage));
   const update = await sdk.queryUpdateWithCurrentPackage(queryPackage);
+  console.log('checkForUpdate-update='+JSON.stringify(update));
   if (!update || update.updateAppVersion ||
     localPackage && (update.packageHash === localPackage.packageHash) ||
     (!localPackage || localPackage._isDebugOnly) && config.packageHash === update.packageHash) {
+    console.log('checkForUpdate-进!update判断');
     if (update && update.updateAppVersion) {
       log("An update is available but it is not targeting the binary version of your app.");
       if (handleBinaryVersionMismatchCallback && typeof handleBinaryVersionMismatchCallback === "function") {
@@ -356,7 +362,7 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
   try {
     syncStatusChangeCallback(CodePush.SyncStatus.CHECKING_FOR_UPDATE);
     const remotePackage = await checkForUpdate(syncOptions.deploymentKey, handleBinaryVersionMismatchCallback);
-
+    console.log('checkForUpdate-remotePackage='+JSON.stringify(remotePackage) );
     const doDownloadAndInstall = async () => {
       syncStatusChangeCallback(CodePush.SyncStatus.DOWNLOADING_PACKAGE);
       const localPackage = await remotePackage.download(downloadProgressCallback);
@@ -373,8 +379,22 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     };
 
     const updateShouldBeIgnored = await shouldUpdateBeIgnored(remotePackage, syncOptions);
+    if (!remotePackage || updateShouldBeIgnored) {
+      console.log('checkForUpdate-!remotePackage || updateShouldBeIgnored= 进最新版本的判断');
+      if (updateShouldBeIgnored) {
+          log("An update is available, but it is being ignored due to having been previously rolled back.");
+      }
 
-    if (syncOptions.updateDialog) {
+      const currentPackage = await CodePush.getCurrentPackage();
+      if (currentPackage && currentPackage.isPending) {
+        syncStatusChangeCallback(CodePush.SyncStatus.UPDATE_INSTALLED);
+        return CodePush.SyncStatus.UPDATE_INSTALLED;
+      } else {
+        syncStatusChangeCallback(CodePush.SyncStatus.UP_TO_DATE);
+        return CodePush.SyncStatus.UP_TO_DATE;
+      }
+    }else if (syncOptions.updateDialog) {
+      console.log('checkForUpdate-syncOptions.updateDialog= 去下载更新');
       if (typeof syncOptions.updateDialog !== "object") {
         syncOptions.updateDialog = CodePush.DEFAULT_UPDATE_DIALOG;
       } else {

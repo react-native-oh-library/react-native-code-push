@@ -4,7 +4,6 @@ import FileUtils from './FileUtils';
 import fs from "@ohos.file.fs";
 import zlib from '@ohos.zlib';
 import { CodePushUtils } from './CodePushUtils';
-import HashMap from '@ohos.util.HashMap';
 import http from '@ohos.net.http';
 
 import common from '@ohos.app.ability.common';
@@ -48,7 +47,7 @@ export class CodePushUpdateManager {
 
   public getCurrentPackageInfo(): object {
     let statusFilePath: string = this.getStatusFilePath();
-    Logger.info(TAG, `getCurrentPackageInfo, statusFilePath = ${statusFilePath}`);
+    Logger.info(TAG, `getCurrentPackageInfo, statusFilePath=${statusFilePath}`);
     if (!FileUtils.fileAtPathExists(statusFilePath)) {
       Logger.info(TAG, `getCurrentPackageInfo statusFilePath not exists`);
       return {};
@@ -58,7 +57,7 @@ export class CodePushUpdateManager {
       return CodePushUtils.getJsonObjectFromFile(statusFilePath);
     } catch (e) {
       // Should not happen.
-      Logger.error(TAG, `getJsonObjectFromFile, error: ${JSON.stringify(e)}`);
+      Logger.error(TAG, `getJsonObjectFromFile,error:${JSON.stringify(e)}`);
     }
   }
 
@@ -92,7 +91,7 @@ export class CodePushUpdateManager {
       return null;
     }
 
-    let relativeBundlePath: string = currentPackage.get(CodePushConstants.RELATIVE_BUNDLE_PATH_KEY);
+    let relativeBundlePath: string = currentPackage[CodePushConstants.RELATIVE_BUNDLE_PATH_KEY].toString();
     if (relativeBundlePath == null) {
       return CodePushUtils.appendPathComponent(packageFolder, bundleFileName);
     } else {
@@ -115,9 +114,9 @@ export class CodePushUpdateManager {
     return info[CodePushConstants.PREVIOUS_PACKAGE_KEY];
   }
 
-  public getCurrentPackage(): HashMap<string, any> {
+  public getCurrentPackage(): Record<string, any> {
     let packageHash: string = this.getCurrentPackageHash();
-    Logger.info(TAG, `updateManager, packageHash: ${packageHash}`);
+    Logger.info(TAG, `updateManager, packageHash:${packageHash}`);
     if (!packageHash) {
       return;
     }
@@ -125,7 +124,7 @@ export class CodePushUpdateManager {
     return this.getPackage(packageHash);
   }
 
-  public getPreviousPackage(): HashMap<string, any> {
+  public getPreviousPackage(): Record<string, any> {
     let packageHash: string = this.getPreviousPackageHash();
     if (packageHash == null) {
       return null;
@@ -133,22 +132,23 @@ export class CodePushUpdateManager {
     return this.getPackage(packageHash);
   }
 
-  public getPackage(packageHash: string): HashMap<string, any> {
+  public getPackage(packageHash: string): Record<string, any> {
     let folderPath: string = this.getPackageFolderPath(packageHash);
     let packageFilePath: string = CodePushUtils.appendPathComponent(folderPath, CodePushConstants.PACKAGE_FILE_NAME);
-    Logger.info(TAG, 'packageHash--', folderPath)
-    Logger.info(TAG, 'packageHash--', folderPath)
+    Logger.info(TAG, `packageHash--folderPath=${folderPath}`);
+    Logger.info(TAG, `packageHash--packageFilePath=${packageFilePath}`);
     try {
       return CodePushUtils.getJsonObjectFromFile(packageFilePath);
     } catch (e) {
+      Logger.error(TAG, `packageHash--getPackage,error=${JSON.stringify(e)}`);
       return null;
     }
   }
 
-  async downloadPackage(updatePackage: HashMap<string, any>, expectedBundleFileName: string, httpClient: HttpClient,
+  async downloadPackage(updatePackage: Record<string, any>, expectedBundleFileName: string, httpClient: HttpClient,
     progressCallback: Callback, stringPublicKey: string) {
 
-    Logger.info(TAG, `downloadPackage updatePackage: ${JSON.stringify(updatePackage)}`);
+    Logger.info(TAG, `downloadPackage updatePackage:${JSON.stringify(updatePackage)}`);
     let newUpdateHash = updatePackage[CodePushConstants.PACKAGE_HASH_KEY]
     let newUpdateFolderPath = this.getPackageFolderPath(newUpdateHash);
     Logger.info(TAG, 'downloadPackage--newUpdateFolderPath=' + newUpdateFolderPath)
@@ -177,7 +177,7 @@ export class CodePushUpdateManager {
 
     let data = httpResponse.body
     if (data) {
-      Logger.info(TAG, `downloadPackage`, JSON.stringify(data));
+      Logger.info(TAG, `downloadPackage,data`);
       let downloadFolder = this.getCodePushPath();
       Logger.info(TAG, 'downloadPackage--downloadFolder=' + downloadFolder)
       if (!fs.accessSync(downloadFolder)) {
@@ -205,7 +205,7 @@ export class CodePushUpdateManager {
             Logger.info(TAG, 'mkdirSync unzippedFolderPath success. ');
           }
         } catch (error) {
-          Logger.info(TAG, `mkdirSync unzippedFolderPath error, ${JSON.stringify(error)}`);
+          Logger.info(TAG, `mkdirSync unzippedFolderPath error,${JSON.stringify(error)}`);
         }
         let options2: zlib.Options = {
           level: zlib.CompressLevel.COMPRESS_LEVEL_DEFAULT_COMPRESSION
@@ -215,7 +215,7 @@ export class CodePushUpdateManager {
           Logger.info(TAG, 'decompressFile download success2. data');
           FileUtils.deleteDirectoryAtPath(downloadFile);
         } catch (error) {
-          Logger.error(TAG, `errData is errCode: ${JSON.stringify(error)}`);
+          Logger.error(TAG, `errData is errCode:${JSON.stringify(error)}`);
         }
         let relativeBundlePath = 'index.harmony.bundle';
         Logger.info(TAG, 'signCon--relativeBundlePath' + relativeBundlePath);
@@ -231,7 +231,7 @@ export class CodePushUpdateManager {
 
   }
 
-  public installPackage(updatePackage: HashMap<string, any>, removePendingUpdate: boolean): void {
+  public installPackage(updatePackage: Record<string, any>, removePendingUpdate: boolean): void {
     Logger.info(TAG, 'installPackage--installPackage-entry1' + JSON.stringify(updatePackage))
     Logger.info(TAG, 'installPackage--installPackage-entry2' + CodePushConstants.PACKAGE_HASH_KEY)
     let packageHash: string = updatePackage[CodePushConstants.PACKAGE_HASH_KEY]

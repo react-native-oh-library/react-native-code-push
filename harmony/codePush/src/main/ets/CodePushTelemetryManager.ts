@@ -2,7 +2,6 @@ import dataPreferences from '@ohos.data.preferences';
 import { Context } from '@kit.AbilityKit';
 import { CodePushConstants } from './CodePushConstants';
 import { BusinessError } from "@ohos.base";
-import HashMap from '@ohos.util.HashMap';
 
 
 export class CodePushTelemetryManager {
@@ -68,7 +67,7 @@ export class CodePushTelemetryManager {
     if (retryStatusReportString != null) {
       this.clearRetryStatusReport();
       try {
-        const retryStatusReport: HashMap<string, any> = JSON.parse(retryStatusReportString);
+        const retryStatusReport: Record<string, any> = JSON.parse(retryStatusReportString);
         // return CodePushUtils.convertJsonObjectToWritable(retryStatusReport);
         return retryStatusReport;
       } catch (e) {
@@ -78,26 +77,26 @@ export class CodePushTelemetryManager {
     return null;
   }
 
-  public getRollbackReport(lastFailedPackage: HashMap<string, any>): HashMap<string, any> {
-    const reportMap: HashMap<string, any> = new HashMap();
-    reportMap.set(this.PACKAGE_KEY, lastFailedPackage);
-    reportMap.set(this.STATUS_KEY, this.DEPLOYMENT_FAILED_STATUS);
+  public getRollbackReport(lastFailedPackage: Record<string, any>): Record<string, any> {
+    const reportMap: Record<string, any> = {};
+    reportMap[this.PACKAGE_KEY] = lastFailedPackage;
+    reportMap[this.STATUS_KEY] = this.DEPLOYMENT_FAILED_STATUS;
     return reportMap;
   }
 
-  public getUpdateReport(currentPackage: HashMap<string, any>): HashMap<string, any> {
+  public getUpdateReport(currentPackage: Record<string, any>): Record<string, any> {
     const currentPackageIdentifier: string = this.getPackageStatusReportIdentifier(currentPackage);
     const previousStatusReportIdentifier: string = this.getPreviousStatusReportIdentifier();
-    let reportMap: HashMap<string, any> = null;
+    let reportMap: Record<string, any> = null;
     if (currentPackageIdentifier != null) {
       if (previousStatusReportIdentifier == null) {
         this.clearRetryStatusReport();
-        reportMap = new HashMap();
+        reportMap = {};
         reportMap.set(this.PACKAGE_KEY, currentPackage);
         reportMap.set(this.STATUS_KEY, this.DEPLOYMENT_SUCCEEDED_STATUS);
       } else if (previousStatusReportIdentifier != currentPackageIdentifier) {
         this.clearRetryStatusReport();
-        reportMap = new HashMap();
+        reportMap = {};
         if (this.isStatusReportIdentifierCodePushLabel(previousStatusReportIdentifier)) {
           let previousDeploymentKey: string =
             this.getDeploymentKeyFromStatusReportIdentifier(previousStatusReportIdentifier);
@@ -118,7 +117,7 @@ export class CodePushTelemetryManager {
     return reportMap;
   }
 
-  public recordStatusReported(statusReport: HashMap<string, any>): void {
+  public recordStatusReported(statusReport: Record<string, any>): void {
     // We don't need to record rollback reports, so exit early if that's what was specified.
     if (statusReport.hasKey(this.STATUS_KEY) && this.DEPLOYMENT_FAILED_STATUS === statusReport.get(this.STATUS_KEY)) {
       return;
@@ -132,11 +131,11 @@ export class CodePushTelemetryManager {
     }
   }
 
-  public saveStatusReportForRetry(statusReport: HashMap<string, any>): void {
+  public saveStatusReportForRetry(statusReport: Record<string, any>): void {
     this.preferences.put(this.RETRY_DEPLOYMENT_REPORT_KEY, JSON.stringify(statusReport));
   }
 
-  private getPackageStatusReportIdentifier(updatePackage: HashMap<string, any>): string {
+  private getPackageStatusReportIdentifier(updatePackage: Record<string, any>): string {
     // Because deploymentKeys can be dynamically switched, we use a
     // combination of the deploymentKey and label as the packageIdentifier.
     const deploymentKey: string = updatePackage.get(this.DEPLOYMENT_KEY_KEY);

@@ -1,4 +1,3 @@
-import HashMap from '@ohos.util.HashMap';
 import fileio from "@ohos.fileio";
 import buffer from "@ohos.buffer";
 import { BusinessError } from "@ohos.base";
@@ -24,12 +23,13 @@ export class CodePushUtils {
     FileUtils.writeStringToFile(jsonString, filePath);
   }
 
-  static getJsonObjectFromFile(packageFilePath: string): HashMap<string, any> {
+  static getJsonObjectFromFile(packageFilePath: string): Record<string, any> {
     let content = FileUtils.readFileToString(packageFilePath);
     Logger.info(TAG, 'installPackage--getJsonObjectFromFile' + JSON.parse(content))
     try {
       return JSON.parse(content);
     } catch (err) {
+      Logger.error(TAG, `getJsonObjectFromFile--error=${JSON.stringify(err)}`);
       // Should not happen
       throw new CodePushMalformedDataException(packageFilePath, err);
     }
@@ -45,12 +45,12 @@ export class CodePushUtils {
 
   static getStringFromInputStream(file: File): string {
     let context;
-    Logger.info(TAG, `getStringFromInputStream file path: ${file.path}`);
+    Logger.info(TAG, `getStringFromInputStream file path:${file.path}`);
     try {
       context = fs.readTextSync(file.path);
-      Logger.info(TAG, `getStringFromInputStream context: ${context}`);
+      Logger.info(TAG, `getStringFromInputStream context:${context}`);
     } catch (error) {
-      Logger.error(TAG, `getStringFromInputStream error: ${JSON.stringify(error)}`);
+      Logger.error(TAG, `getStringFromInputStream error:${JSON.stringify(error)}`);
     }
     return context;
   }
@@ -71,7 +71,7 @@ export class CodePushUtils {
       .then((readResult: fileio.ReadOut) => {
         Logger.info(TAG, "read file data succeed");
         let buf = buffer.from(arrayBuffer, 0, readResult.bytesRead);
-        Logger.info(TAG, `buf: --- ${buf.toString()}`);
+        Logger.info(TAG, `buf: ---${buf.toString()}`);
         fileio.closeSync(fd);
       })
       .catch((err: BusinessError) => {
