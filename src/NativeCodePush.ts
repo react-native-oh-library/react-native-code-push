@@ -2,7 +2,7 @@ import type { TurboModule } from "react-native/Libraries/TurboModule/RCTExport";
 import { TurboModuleRegistry } from "react-native";
 
 export interface Spec extends TurboModule {
-  sync(): Promise<any>
+  sync(): Promise<any>;
   isFailedUpdate(packageHash: string): Promise<boolean>;
   allow(): void;
   clearPendingRestart(): void;

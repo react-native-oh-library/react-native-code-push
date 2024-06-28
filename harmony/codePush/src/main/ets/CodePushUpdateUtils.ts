@@ -38,26 +38,26 @@ export class CodePushUpdateUtils {
   }
 
   public static getHashForBinaryContents(context, isDebugMode: boolean): string {
-    Logger.info(TAG, `getHashForBinaryContents isDebugMode: ${isDebugMode.toString()}`);
+    Logger.info(TAG, `getHashForBinaryContents isDebugMode:${isDebugMode.toString()}`);
     let filesDir = context.filesDir;
     try {
       let file = fs.openSync(
         filesDir + CodePushConstants.CODE_PUSH_HASH_FILE_NAME,
         fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE
       );
-      Logger.info(TAG, `getHashForBinaryContents file1 path: ${file.path}`);
+      Logger.info(TAG, `getHashForBinaryContents file1 path:${file.path}`);
       return CodePushUtils.getStringFromInputStream(file);
     } catch (e) {
-      Logger.error(TAG, `getHashForBinaryContents file1 error: ${JSON.stringify(e)}`);
+      Logger.error(TAG, `getHashForBinaryContents file1 error:${JSON.stringify(e)}`);
       try {
         let file = fs.openSync(
           filesDir + CodePushConstants.CODE_PUSH_OLD_HASH_FILE_NAME,
           fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE
         );
-        Logger.info(TAG, `getHashForBinaryContents file2 path: ${file.path}`);
+        Logger.info(TAG, `getHashForBinaryContents file2 path:${file.path}`);
         return CodePushUtils.getStringFromInputStream(file);
       } catch (ex) {
-        Logger.error(TAG, `getHashForBinaryContents file2 error: ${JSON.stringify(ex)}`);
+        Logger.error(TAG, `getHashForBinaryContents file2 error:${JSON.stringify(ex)}`);
         if (!isDebugMode) {
           // Only print this message in "Release" mode. In "Debug", we may not have the
           // hash if the build skips bundling the files.

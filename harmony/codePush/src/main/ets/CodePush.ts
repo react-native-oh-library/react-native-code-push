@@ -3,7 +3,6 @@ import { CodePushUpdateManager } from './CodePushUpdateManager';
 import { SettingsManager } from './SettingsManager';
 import { bundleManager } from '@kit.AbilityKit';
 import { CodePushUnknownException } from './CodePushUnknownException';
-import HashMap from '@ohos.util.HashMap';
 import { CodePushConstants } from './CodePushConstants';
 import { CodePushNotInitializedException } from './CodePushNotInitializedException';
 import { CodePushUtils } from './CodePushUtils';
@@ -166,7 +165,7 @@ export class CodePush {
     }
   }
 
-  private hasBinaryVersionChanged(packageMetadata: HashMap<string, any>): boolean {
+  private hasBinaryVersionChanged(packageMetadata: Record<string, any>): boolean {
     const packageAppVersion: string = packageMetadata.get("appVersion");
     return !(this.sAppVersion === packageAppVersion);
   }
@@ -197,7 +196,7 @@ export class CodePush {
     this.mSettingsManager.removeFailedUpdates();
   }
 
-  private isPackageBundleLatest(packageMetadata: HashMap<string, any>): boolean {
+  private isPackageBundleLatest(packageMetadata: Record<string, any>): boolean {
     try {
       let binaryModifiedDateDuringPackageInstall = null;
       let binaryModifiedDateDuringPackageInstallString: string =

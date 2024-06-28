@@ -17,7 +17,7 @@ export default class FileUtils {
       fs.mkdirSync(newPackageFolderPath, true);
     }
     let isDirectory = fs.statSync(currentPackageFolderPath).isDirectory();
-    Logger.info(TAG, `copyDirectoryContents isDirectory = ${isDirectory.toString()}`);
+    Logger.info(TAG, `copyDirectoryContents isDirectory=${isDirectory.toString()}`);
     let listFileOption: ListFileOptions = {
       recursion: false,
       listNum: 0,
@@ -30,7 +30,7 @@ export default class FileUtils {
     // 如果是目录
     if (isDirectory) {
       let filenames = fs.listFileSync(currentPackageFolderPath, listFileOption);
-      Logger.info(TAG, `copyDirectoryContents filenames = ${JSON.stringify(filenames)}`);
+      Logger.info(TAG, `copyDirectoryContents filenames=${JSON.stringify(filenames)}`);
       for (let i = 0; i < filenames.length; i++) {
         Logger.info(TAG, `copyDirectoryContents filename: ${filenames[i]}`);
         fs.copyFileSync(CodePushUtils.appendPathComponent(currentPackageFolderPath, filenames[i]),
@@ -88,6 +88,7 @@ export default class FileUtils {
       Logger.info(TAG, "content: " + it.value);
       str_file += it.value
     }
+    Logger.info(TAG, "content: str_file=" + str_file);
     return str_file
   }
 
@@ -96,13 +97,13 @@ export default class FileUtils {
     try {
       zlib.decompressFile(inFile, outFileDir, (errData: BusinessError) => {
         if (errData !== null) {
-          Logger.error(TAG, `decompressFile failed.code is ${errData.code}, message is ${errData.message}`);
+          Logger.error(TAG, `decompressFile failed. code is ${errData.code}, message is ${errData.message}`);
         }
       })
     } catch (errData) {
       let code = (errData as BusinessError).code;
       let message = (errData as BusinessError).message;
-      Logger.error(TAG, `decompressFile failed.code is ${code}, message is ${message}`);
+      Logger.error(TAG, `decompressFile failed. code is ${code}, message is ${message}`);
     }
   }
 
