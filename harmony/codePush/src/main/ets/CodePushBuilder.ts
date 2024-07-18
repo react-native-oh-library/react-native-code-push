@@ -17,13 +17,13 @@ export class CodePushBuilder {
   constructor() {
     let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION;
     let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags);
-    let appProvisionType = bundleInfo.appInfo.appProvisionType
-    Logger.info(TAG, `CodePushBuilder appProvisionType:${appProvisionType}`)
+    let isDebug = bundleInfo.appInfo.debug
+    Logger.info(TAG, `CodePushBuilder isDebug:${isDebug}`)
     let deploymentKeyConfigName;
-    if (appProvisionType === 'release') {
-      deploymentKeyConfigName = 'production';
-    } else {
+    if (isDebug) {
       deploymentKeyConfigName = 'Staging';
+    } else {
+      deploymentKeyConfigName = 'production';
     }
     let deploymentKey = context.resourceManager.getStringByNameSync(deploymentKeyConfigName);
     this.mDeploymentKey = deploymentKey;
