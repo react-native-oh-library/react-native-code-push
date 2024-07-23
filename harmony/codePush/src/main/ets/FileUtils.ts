@@ -41,7 +41,23 @@ export default class FileUtils {
       fs.copyFileSync(currentPackageFolderPath, newPackageFolderPath);
     }
   }
-
+  //将原路径下的所有文件夹复制到另一个文件夹下
+  static copyDirectoryAll(currentPath:string,newPath:string){
+    let listFileOption: ListFileOptions = {
+      recursion: false,
+      listNum: 0
+    }
+    try {
+      let filenames = fs.listFileSync(currentPath,listFileOption);
+      Logger.info(TAG,`copyDirectoryAll--filenames:${JSON.stringify(filenames)}`)
+      for (let i = 0; i < filenames.length; i++) {
+        const srcEntryPath = `${currentPath}/${filenames[i]}`;
+        fs.copyDirSync(srcEntryPath,newPath,1)
+      }
+    } catch (error) {
+      Logger.info(TAG,`copyDirectoryAll--error:${error}`)
+    }
+  }
   //删除指定路径下的目录。
   static deleteDirectoryAtPath(directoryPath: string): void {
     if (directoryPath == null) {

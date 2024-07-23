@@ -58,12 +58,12 @@ export class CodePush {
     }
 
     this.mCurrentInstance = this;
-    const publicKeyFromStrings: string = this.getCustomPropertyFromStringsIfExist("PublicKey");
+    const publicKeyFromStrings: string = AppStorage.Get("CodePushConfig")["PublicKey"];;
     if (publicKeyFromStrings != null) {
       CodePush.mPublicKey = publicKeyFromStrings;
     }
 
-    const serverUrlFromStrings: string = this.getCustomPropertyFromStringsIfExist("ServerUrl");
+    const serverUrlFromStrings: string = AppStorage.Get("CodePushConfig")["ServerUrl"];
     if (serverUrlFromStrings != null) {
       this.mServerUrl = serverUrlFromStrings;
     }
