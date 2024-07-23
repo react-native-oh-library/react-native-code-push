@@ -23,9 +23,9 @@ export class CodePushBuilder {
     if (isDebug) {
       deploymentKeyConfigName = 'Staging';
     } else {
-      deploymentKeyConfigName = 'production';
+      deploymentKeyConfigName = 'Production';
     }
-    let deploymentKey = context.resourceManager.getStringByNameSync(deploymentKeyConfigName);
+    let deploymentKey = AppStorage.Get("CodePushConfig")[deploymentKeyConfigName];
     this.mDeploymentKey = deploymentKey;
     Logger.info(TAG, `CodePushBuilder getDeploymentKey:${deploymentKey}`)
   }

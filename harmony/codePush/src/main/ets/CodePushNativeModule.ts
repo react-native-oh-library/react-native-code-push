@@ -7,6 +7,7 @@ import { CodePushTelemetryManager } from './CodePushTelemetryManager';
 import { CodePush } from './CodePush';
 import common from '@ohos.app.ability.common';
 import fs from '@ohos.file.fs';
+import FileUtils  from './FileUtils';
 import { SettingsManager } from './SettingsManager';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { CodePushUtils } from './CodePushUtils';
@@ -86,10 +87,10 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
     let bundleFileName: string = 'bundle.harmony.js';
 
     return new CodePushUpdateManager('').downloadPackage(mutableUpdatePackage, bundleFileName, this.ctx.httpClient,
-      (totalSize, receiveSize) => {
+      (totalBytes, receivedBytes) => {
         this.ctx.rnInstance.emitDeviceEvent('CodePushDownloadProgress', {
-          totalSize: totalSize,
-          receiveSize: receiveSize,
+          totalBytes: totalBytes,
+          receivedBytes: receivedBytes,
         });
       }, '')
 
@@ -380,19 +381,13 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
     Logger.info(TAG, "restartAppInternal--loadBundle-start");
     let info = new CodePushUpdateManager('').getCurrentPackageInfo();
     let currentPackageHash: string = info[CodePushConstants.CURRENT_PACKAGE_KEY];
-    let sx_latestJSBundleFile =
-      context.filesDir + '/CodePush/' + currentPackageHash + '/bundle.harmony.js'
-    const local_address = context.filesDir + '/bundle.harmony.js'
-    Logger.info(TAG, `loadBundle sx_latestJSBundleFile=${sx_latestJSBundleFile}`);
-    let access = fs.accessSync(sx_latestJSBundleFile);
-    Logger.info(TAG, `loadBundle sx_latestJSBundleFile access=${access}`);
-    Logger.info(TAG, `loadBundle local_address=${local_address}`);
-    // 加载下载的bundle包 start
-    ///data/app/el2/100/base/com.rnoh.CodeP/haps/entry/files/CodePush/eb6edb31a178973959241cd459aed87aa521d230dff2d53486fcdf4842225ae9
-    fs.unlinkSync(local_address);
-    Logger.info(TAG, `loadBundle unlinkSync local_address`);
+    let sx_latestJSBundleFile_assets = context.filesDir + '/CodePush/' + currentPackageHash + '/rawfile/assets';
+    let sx_latestJSBundleFile_bundle = context.filesDir + '/CodePush/' + currentPackageHash + '/rawfile/bundle.harmony.js';
+    const local_address = context.filesDir;
+    fs.moveFileSync(sx_latestJSBundleFile_bundle,local_address + '/bundle.harmony.js') 
+    Logger.info(TAG, "restartAppInternal--loadBundle-moveFileSync");
     try {
-      fs.copyFileSync(sx_latestJSBundleFile, local_address);
+      FileUtils.copyDirectoryAll(sx_latestJSBundleFile_assets,local_address)
     } catch (error) {
       Logger.error(TAG, `restartAppInternal--loadBundle-end,error=${JSON.stringify(error)}`);
     }

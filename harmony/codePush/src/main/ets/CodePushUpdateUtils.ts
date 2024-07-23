@@ -39,7 +39,7 @@ export class CodePushUpdateUtils {
 
   public static getHashForBinaryContents(context, isDebugMode: boolean): string {
     Logger.info(TAG, `getHashForBinaryContents isDebugMode:${isDebugMode.toString()}`);
-    let filesDir = context.filesDir;
+    let filesDir = context.filesDir+'/';
     try {
       let file = fs.openSync(
         filesDir + CodePushConstants.CODE_PUSH_HASH_FILE_NAME,
