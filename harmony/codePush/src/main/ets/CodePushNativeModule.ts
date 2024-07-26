@@ -6,7 +6,7 @@ import { CodePushUpdateManager } from './CodePushUpdateManager';
 import { CodePushTelemetryManager } from './CodePushTelemetryManager';
 import { CodePush } from './CodePush';
 import common from '@ohos.app.ability.common';
-import fs from '@ohos.file.fs';
+import fs, { ListFileOptions } from '@ohos.file.fs';
 import FileUtils  from './FileUtils';
 import { SettingsManager } from './SettingsManager';
 import { BusinessError } from '@kit.BasicServicesKit';
@@ -48,8 +48,8 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
   private preferences: dataPreferences.Preferences | null = null;
   private mTelemetryManager: CodePushTelemetryManager | null = null;
   private mSettingsManager: SettingsManager | null = null;
-  private mUpdateManager: CodePushUpdateManager | null = null
-
+  private mUpdateManager: CodePushUpdateManager | null = null;
+  installMode = 0;
 
   sync(): Promise<unknown> {
     throw new Error('Method not implemented.');
@@ -247,6 +247,7 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
     minimumBackgroundDuration: number): Promise<void> {
 
     try {
+      this.installMode = installMode
       Logger.info(TAG, 'installPackage--CodePushNativeModule-entry')
       new CodePushUpdateManager('').installPackage(updatePackage, new SettingsManager().isPendingUpdate(null))
       Logger.info(TAG, 'installPackage--CodePushNativeModule-end')
@@ -381,18 +382,25 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
     Logger.info(TAG, "restartAppInternal--loadBundle-start");
     let info = new CodePushUpdateManager('').getCurrentPackageInfo();
     let currentPackageHash: string = info[CodePushConstants.CURRENT_PACKAGE_KEY];
-    let sx_latestJSBundleFile_assets = context.filesDir + '/CodePush/' + currentPackageHash + '/rawfile/assets';
-    let sx_latestJSBundleFile_bundle = context.filesDir + '/CodePush/' + currentPackageHash + '/rawfile/bundle.harmony.js';
+    const sx_latestJSBundleFile = context.filesDir + '/CodePush/' + currentPackageHash;
     const local_address = context.filesDir;
-    fs.moveFileSync(sx_latestJSBundleFile_bundle,local_address + '/bundle.harmony.js') 
-    Logger.info(TAG, "restartAppInternal--loadBundle-moveFileSync");
+    let listFileOption: ListFileOptions = {
+      recursion: false,
+      listNum: 0
+    }
     try {
-      FileUtils.copyDirectoryAll(sx_latestJSBundleFile_assets,local_address)
-    } catch (error) {
+      let filenames = fs.listFileSync(sx_latestJSBundleFile, listFileOption);
+      const getBundleCont = sx_latestJSBundleFile + '/' + filenames[0];
+      const new_getBundleCont = sx_latestJSBundleFile + '/Bundles';
+      fs.renameSync(getBundleCont,new_getBundleCont);
+      fs.copyDirSync(new_getBundleCont,local_address,1)
+    }catch (error) {
       Logger.error(TAG, `restartAppInternal--loadBundle-end,error=${JSON.stringify(error)}`);
     }
     Logger.info(TAG, "restartAppInternal--loadBundle-end");
-    this.ctx.devToolsController.eventEmitter.emit("RELOAD", { reason: 'HotReload2' })
+    if(this.installMode != 2){
+      this.ctx.devToolsController.eventEmitter.emit("RELOAD", { reason: 'HotReload2' })
+    }
     Logger.info(TAG, "restartAppInternal RELOAD end");
   }
 
