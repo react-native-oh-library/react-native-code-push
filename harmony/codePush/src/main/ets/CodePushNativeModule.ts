@@ -398,7 +398,7 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
       Logger.error(TAG, `restartAppInternal--loadBundle-end,error=${JSON.stringify(error)}`);
     }
     Logger.info(TAG, "restartAppInternal--loadBundle-end");
-    if(this.installMode != 2){
+    if(this.installMode === 0){
       this.ctx.devToolsController.eventEmitter.emit("RELOAD", { reason: 'HotReload2' })
     }
     Logger.info(TAG, "restartAppInternal RELOAD end");
