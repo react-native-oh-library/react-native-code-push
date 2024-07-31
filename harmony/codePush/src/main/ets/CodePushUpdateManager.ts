@@ -257,7 +257,12 @@ export class CodePushUpdateManager {
       if (previousPackageHash != null && !(previousPackageHash === packageHash)) {
         FileUtils.deleteDirectoryAtPath(this.getPackageFolderPath(previousPackageHash));
       }
-      info[CodePushConstants.PREVIOUS_PACKAGE_KEY] = info[CodePushConstants.CURRENT_PACKAGE_KEY];
+      if(!currentPackageHash){
+        info[CodePushConstants.PREVIOUS_PACKAGE_KEY] = packageHash;
+      }else{
+        info[CodePushConstants.PREVIOUS_PACKAGE_KEY] = currentPackageHash;
+      }
+     
     }
     info['currentPackage'] = packageHash
     Logger.info(TAG, 'installPackage--newInfo=' + JSON.stringify(info))
