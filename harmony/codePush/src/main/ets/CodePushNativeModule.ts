@@ -141,7 +141,7 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
       let currentPackage = new CodePushUpdateManager('').getCurrentPackage();
       if (!currentPackage) {
         Logger.info(TAG, `currentPackage is empty`);
-        return Promise.resolve(null);
+        return null;
       }
 
       let currentUpdateIsPending: boolean = false;
@@ -154,18 +154,25 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
       if (updateState == CodePushUpdateState.PENDING.valueOf() && !currentUpdateIsPending) {
         // The caller wanted a pending update
         // but there isn't currently one.
-        return Promise.resolve(null);
+        return null;
       } else if (updateState == CodePushUpdateState.RUNNING.valueOf() && currentUpdateIsPending) {
         // The caller wants the running update, but the current
         // one is pending, so we need to grab the previous.
-        let previousPackage = new CodePushUpdateManager('').getPreviousPackage();
 
-        if (previousPackage == null) {
-          Logger.info(TAG, `currentPackage previousPackage is null`);
-          return Promise.resolve(null);
+        // let previousPackage = new CodePushUpdateManager('').getPreviousPackage();
+
+        // if (previousPackage == null) {
+        //   Logger.info(TAG, `currentPackage previousPackage is null`);
+        //   return null;
+        // }
+
+        // return previousPackage;
+        let previousPackage = new CodePushUpdateManager('').getCurrentPackageInfo();
+        const packageHash = {
+          packageHash:previousPackage['previousPackage']
         }
-
-        return Promise.resolve(previousPackage);
+        Logger.info(TAG, `doInBackgroundForUpdateMetadata previousPackage=${packageHash}`);
+        return packageHash
       } else {
         if (this.mCodePush.isRunningBinaryVersion()) {
           currentPackage["_isDebugOnly"] = true;
@@ -173,7 +180,7 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
         // Enable differentiating pending vs. non-pending updates
         currentPackage["isPending"] = currentUpdateIsPending;
         Logger.info(TAG, `currentPackage currentPackage=${JSON.stringify(currentPackage)}`);
-        return Promise.resolve(currentPackage);
+        return currentPackage;
       }
     } catch (e) {
       // We need to recover the app in case 'codepush.json' is corrupted

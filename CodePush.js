@@ -586,9 +586,9 @@ if (NativeCodePush) {
       MANUAL: 2
     },
     UpdateState: {
-      RUNNING: NativeCodePush.codePushUpdateStateRunning,
-      PENDING: NativeCodePush.codePushUpdateStatePending,
-      LATEST: NativeCodePush.codePushUpdateStateLatest
+      RUNNING: 0,//NativeCodePush.codePushUpdateStateRunning
+      PENDING: 1,//NativeCodePush.codePushUpdateStatePending
+      LATEST: 2 // NativeCodePush.codePushUpdateStateLatest
     },
     DeploymentStatus: {
       FAILED: "DeploymentFailed",
