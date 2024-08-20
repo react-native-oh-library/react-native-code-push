@@ -1,5 +1,5 @@
 import { CodePushConstants } from './CodePushConstants';
-import { RNOHContext, TurboModule } from '@rnoh/react-native-openharmony/ts';
+import { UITurboModule, UITurboModuleContext } from '@rnoh/react-native-openharmony/ts';
 import dataPreferences from '@ohos.data.preferences';
 import { CodePushUpdateUtils } from './CodePushUpdateUtils';
 import { CodePushUpdateManager } from './CodePushUpdateManager';
@@ -7,7 +7,6 @@ import { CodePushTelemetryManager } from './CodePushTelemetryManager';
 import { CodePush } from './CodePush';
 import common from '@ohos.app.ability.common';
 import fs, { ListFileOptions } from '@ohos.file.fs';
-import FileUtils  from './FileUtils';
 import { SettingsManager } from './SettingsManager';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { CodePushUtils } from './CodePushUtils';
@@ -40,7 +39,7 @@ function generateUUID(): string {
   return uuid;
 }
 
-export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.Spec {
+export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePush.Spec {
   private mBinaryContentsHash: string = "";
   private mClientUniqueId: string = "";
   private mCodePush: CodePush | null = null;
@@ -49,13 +48,13 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
   private mTelemetryManager: CodePushTelemetryManager | null = null;
   private mSettingsManager: SettingsManager | null = null;
   private mUpdateManager: CodePushUpdateManager | null = null;
-  installMode = 0;
+  private installMode: number = 1;
 
   sync(): Promise<unknown> {
     throw new Error('Method not implemented.');
   }
 
-  constructor(rnContext: RNOHContext, codePush: CodePush) {
+  constructor(rnContext: UITurboModuleContext, codePush: CodePush) {
     super(rnContext);
     Logger.info(TAG, `constructor start`)
     dataPreferences.getPreferences(context, CodePushConstants.CODE_PUSH_PREFERENCES,
@@ -138,7 +137,7 @@ export class CodePushNativeModule extends TurboModule implements TM.RTNCodePush.
   async doInBackgroundForUpdateMetadata(updateState: number) {
     Logger.info(TAG, `doInBackgroundForUpdateMetadata updateState=${updateState}`);
     try {
-      let currentPackage = new CodePushUpdateManager('').getCurrentPackage();
+      let currentPackage = await new CodePushUpdateManager('').getCurrentPackage();
       if (!currentPackage) {
         Logger.info(TAG, `currentPackage is empty`);
         return null;
