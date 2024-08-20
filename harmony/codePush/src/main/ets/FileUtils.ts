@@ -64,12 +64,16 @@ export default class FileUtils {
       Logger.info(TAG, "deleteDirectoryAtPath attempted with null directoryPath");
       return;
     }
-    // 删除整个目录
-    if (fs.statSync(directoryPath).isDirectory()) {
-      fs.rmdirSync(directoryPath)
-      //  删除单个文件
-    } else {
-      fs.unlinkSync(directoryPath)
+    if(fs.accessSync(directoryPath)){
+       // 删除整个目录
+      if (fs.statSync(directoryPath).isDirectory()) {
+        fs.rmdirSync(directoryPath)
+        //  删除单个文件
+      } else {
+        fs.unlinkSync(directoryPath)
+      }
+    }else{
+      return;
     }
   }
 
