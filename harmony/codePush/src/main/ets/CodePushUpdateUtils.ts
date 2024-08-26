@@ -11,7 +11,7 @@ import { CodePushInvalidUpdateException } from './CodePushInvalidUpdateException
 import FileUtils from './FileUtils'
 import Logger from './Logger';
 
-const TAG = 'CodePushUpdateUtils'
+const TAG = 'CodePushNativeModule-CodePushUpdateUtils: '
 
 let listFileOption: ListFileOptions = {
   recursion: false,

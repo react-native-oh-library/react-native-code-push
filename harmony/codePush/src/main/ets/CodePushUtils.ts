@@ -7,7 +7,7 @@ import { CodePushMalformedDataException } from './CodePushMalformedDataException
 import fs from "@ohos.file.fs";
 import Logger from './Logger';
 
-const TAG = 'CodePushUtils'
+const TAG = 'CodePushNativeModule-CodePushUtils: '
 
 interface WritableMap {
   [key: string]: string | number | boolean | null | WritableMap | WritableMap[];

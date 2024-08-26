@@ -2,7 +2,9 @@ import dataPreferences from '@ohos.data.preferences';
 import { Context } from '@kit.AbilityKit';
 import { CodePushConstants } from './CodePushConstants';
 import { BusinessError } from "@ohos.base";
+import Logger from './Logger';
 
+const TAG = 'CodePushNativeModule-CodePushTelemetryManager: '
 
 export class CodePushTelemetryManager {
   private preferences: dataPreferences.Preferences | null = null;
@@ -26,7 +28,7 @@ export class CodePushTelemetryManager {
           return;
         }
         this.preferences = val;
-        console.info("Succeeded in getting preferences.");
+        Logger.info(TAG, "Succeeded in getting preferences.");
       })
   }
 
@@ -63,7 +65,7 @@ export class CodePushTelemetryManager {
 
   public getRetryStatusReport() {
     let retryStatusReportString: dataPreferences.ValueType =
-      this.preferences.getSync(this.RETRY_DEPLOYMENT_REPORT_KEY, null) as string;
+      this.preferences?.getSync(this.RETRY_DEPLOYMENT_REPORT_KEY, null) as string;
     if (retryStatusReportString != null) {
       this.clearRetryStatusReport();
       try {

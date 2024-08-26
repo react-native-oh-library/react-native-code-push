@@ -7,7 +7,7 @@ declare function getContext(context: any): common.UIAbilityContext;
 
 let context = getContext(this) as common.UIAbilityContext;
 
-const TAG = 'CodePushBuilder'
+const TAG = 'CodePushNativeModule-CodePushBuilder: '
 
 export class CodePushBuilder {
   private mDeploymentKey: string = '';
