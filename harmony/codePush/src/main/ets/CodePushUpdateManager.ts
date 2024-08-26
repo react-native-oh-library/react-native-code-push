@@ -11,7 +11,7 @@ import Logger from './Logger';
 import { HttpClient } from '@rnoh/react-native-openharmony/src/main/ets/HttpClient/HttpClient'
 import { ReceivingProgress } from '@rnoh/react-native-openharmony/src/main/ets/HttpClient/types';
 
-const TAG = 'CodePushUpdateManager';
+const TAG = 'CodePushNativeModule-CodePushUpdateManager: ';
 
 declare function getContext(context: any): common.UIAbilityContext;
 

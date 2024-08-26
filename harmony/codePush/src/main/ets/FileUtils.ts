@@ -5,7 +5,7 @@ import { CodePushUtils } from './CodePushUtils';
 import { CodePushUnknownException } from './CodePushUnknownException';
 import Logger from './Logger';
 
-const TAG = 'FileUtils'
+const TAG = 'CodePushNativeModule-FileUtils: '
 
 export default class FileUtils {
   // 将源路径下的目录内容复制到目标路径

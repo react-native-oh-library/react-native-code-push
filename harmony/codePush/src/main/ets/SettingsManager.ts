@@ -6,7 +6,7 @@ import { CodePushMalformedDataException } from './CodePushMalformedDataException
 import common from '@ohos.app.ability.common';
 import Logger from './Logger';
 
-const TAG = 'SettingsManager'
+const TAG = 'CodePushNativeModule-SettingsManager: '
 
 declare function getContext(context: any): common.UIAbilityContext;
 
@@ -179,7 +179,7 @@ export class SettingsManager {
     pendingUpdate[CodePushConstants.PENDING_UPDATE_IS_LOADING_KEY] = isLoading;
     try {
       Logger.info(TAG, `installPackage--pendingUpdate=${pendingUpdate}`);
-      this.preferences.put(CodePushConstants.PENDING_UPDATE_KEY, JSON.stringify(pendingUpdate));
+      this.preferences?.put(CodePushConstants.PENDING_UPDATE_KEY, JSON.stringify(pendingUpdate));
     } catch (error) {
       throw new CodePushUnknownException("Unable to save pending update.", error);
     }

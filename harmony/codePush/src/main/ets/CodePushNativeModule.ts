@@ -18,7 +18,7 @@ import { TM } from '@rnoh/react-native-openharmony/generated/ts';
 
 import Logger from './Logger';
 
-const TAG = 'CodePushNativeModule'
+const TAG = 'CodePushNativeModule: '
 
 declare function getContext(context: any): common.UIAbilityContext;
 
@@ -137,7 +137,7 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
   async doInBackgroundForUpdateMetadata(updateState: number) {
     Logger.info(TAG, `doInBackgroundForUpdateMetadata updateState=${updateState}`);
     try {
-      let currentPackage = await new CodePushUpdateManager('').getCurrentPackage();
+      let currentPackage = new CodePushUpdateManager('').getCurrentPackage();
       if (!currentPackage) {
         Logger.info(TAG, `currentPackage is empty`);
         return null;

@@ -8,7 +8,7 @@ import { CodePushNotInitializedException } from './CodePushNotInitializedExcepti
 import { CodePushUtils } from './CodePushUtils';
 import Logger from './Logger';
 
-const TAG = 'CodePushInstance'
+const TAG = 'CodePushNativeModule-CodePushInstance: '
 
 export class CodePush {
   private static sIsRunningBinaryVersion: boolean = false;
