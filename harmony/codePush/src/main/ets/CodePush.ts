@@ -48,10 +48,8 @@ export class CodePush {
     if (this.sAppVersion == null) {
       try {
         let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
-        bundleManager.getBundleInfoForSelf(bundleFlags).then((appInfo) => {
-          this.sAppVersion = appInfo.versionName;
-          Logger.info(TAG, `constructor sAppVersion ${this.sAppVersion}`);
-        });
+        const appInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags);
+        this.sAppVersion = appInfo.versionName;
       } catch (e) {
         Logger.error(TAG, `constructor sAppVersion error: ${JSON.stringify(e)}`);
       }
@@ -67,7 +65,7 @@ export class CodePush {
     if (serverUrlFromStrings != null) {
       this.mServerUrl = serverUrlFromStrings;
     }
-
+    this.initializeUpdateAfterRestart()
   }
 
   static isUsingTestConfiguration(): boolean {
@@ -98,7 +96,7 @@ export class CodePush {
     if (codePushLocalPackage == null) {
       return null;
     }
-    return this.mUpdateManager.getPackageFolderPath(codePushLocalPackage.get("packageHash"));
+    return this.mUpdateManager.getPackageFolderPath(codePushLocalPackage["packageHash"]);
   }
 
   getBundleUrl(assetsBundleFileName?: string): string {
@@ -165,8 +163,36 @@ export class CodePush {
     }
   }
 
+  initializeUpdateAfterRestart() {
+    // 重置状态，指示应用是否刚刚更新过。
+    this.mDidUpdate = false;
+
+    const pendingUpdate = this.mSettingsManager.getPendingUpdate();
+    Logger.info(TAG, `initializeUpdateAfterRestart pendingUpdate ${pendingUpdate}`);
+    if (pendingUpdate != null) {
+      try {
+        const packageMetadata = this.mUpdateManager.getCurrentPackage();
+        if (packageMetadata == null ||
+          (!this.isPackageBundleLatest(packageMetadata) && this.hasBinaryVersionChanged(packageMetadata))) {
+          Logger.info("Skipping initializeUpdateAfterRestart(), binary version is newer");
+          return;
+        }
+
+        // 确实有一个新的更新正在首次运行，因此更新本地状态以确保客户端知道。
+        this.mDidUpdate = true;
+        this.mSettingsManager.savePendingUpdate(
+          pendingUpdate[CodePushConstants.PENDING_UPDATE_HASH_KEY],
+          true
+        );
+      } catch (e) {
+        Logger.error(TAG, `initializeUpdateAfterRestart error ${JSON.stringify(e)}`);
+      }
+    }
+  }
+
+
   private hasBinaryVersionChanged(packageMetadata: Record<string, any>): boolean {
-    const packageAppVersion: string = packageMetadata.get("appVersion");
+    const packageAppVersion: string = packageMetadata["appVersion"];
     return !(this.sAppVersion === packageAppVersion);
   }
 
@@ -200,11 +226,11 @@ export class CodePush {
     try {
       let binaryModifiedDateDuringPackageInstall = null;
       let binaryModifiedDateDuringPackageInstallString: string =
-        packageMetadata.get(CodePushConstants.BINARY_MODIFIED_TIME_KEY);
+        packageMetadata[CodePushConstants.BINARY_MODIFIED_TIME_KEY];
       if (binaryModifiedDateDuringPackageInstallString != null) {
         binaryModifiedDateDuringPackageInstall = parseInt(binaryModifiedDateDuringPackageInstallString);
       }
-      let packageAppVersion: string = packageMetadata.get("appVersion");
+      let packageAppVersion: string = packageMetadata["appVersion"];
       return binaryModifiedDateDuringPackageInstall &&
         (CodePush.isUsingTestConfiguration() || this.sAppVersion === packageAppVersion);
     } catch (e) {

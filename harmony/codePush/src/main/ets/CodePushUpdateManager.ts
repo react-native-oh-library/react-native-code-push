@@ -273,6 +273,7 @@ export class CodePushUpdateManager {
     let info: object = this.getCurrentPackageInfo();
     let currentPackageFolderPath: string = this.getCurrentPackageFolderPath();
     FileUtils.deleteDirectoryAtPath(currentPackageFolderPath);
+    FileUtils.deleteDirectoryAtPath(this.getStatusFilePath());
     info[CodePushConstants.CURRENT_PACKAGE_KEY] = info[CodePushConstants.PREVIOUS_PACKAGE_KEY]
     info[CodePushConstants.PREVIOUS_PACKAGE_KEY] = null;
     this.updateCurrentPackageInfo(info);
