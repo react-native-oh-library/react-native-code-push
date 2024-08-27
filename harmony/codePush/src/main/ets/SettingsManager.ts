@@ -11,16 +11,7 @@ const TAG = 'CodePushNativeModule-SettingsManager: '
 declare function getContext(context: any): common.UIAbilityContext;
 
 let context = getContext(this) as common.UIAbilityContext;
-let getpreferences: dataPreferences.Preferences | null = null;
-dataPreferences.getPreferences(context, CodePushConstants.CODE_PUSH_PREFERENCES,
-  (err: BusinessError, val: dataPreferences.Preferences) => {
-    if (err) {
-      Logger.error(TAG, `Failed to get preferences. error =${JSON.stringify(err)}`);
-      return;
-    }
-    getpreferences = val;
-    Logger.info(TAG, "Succeeded in getting preferences.");
-  })
+let getpreferences: dataPreferences.Preferences | null = dataPreferences.getPreferencesSync(context, { name: CodePushConstants.CODE_PUSH_PREFERENCES });
 
 export class SettingsManager {
   private preferences: dataPreferences.Preferences | null = getpreferences;
@@ -39,6 +30,7 @@ export class SettingsManager {
       // Unrecognized data format, clear and replace with expected format.
       const emptyArray: Array<Record<string, any>> = new Array();
       this.preferences.put(CodePushConstants.FAILED_UPDATES_KEY, emptyArray.toString());
+      this.preferences?.flush()
       return emptyArray;
     }
   }
@@ -69,7 +61,7 @@ export class SettingsManager {
         Logger.info(TAG, `isFailedHash--failedUpdates-i=${JSON.stringify(failedUpdates[i])}`);
         try {
           const failedPackage: Record<string, any> = failedUpdates[i];
-          const failedPackageHash: string = JSON.stringify(failedPackage.get(CodePushConstants.PACKAGE_HASH_KEY));
+          const failedPackageHash: string = JSON.stringify(failedPackage[CodePushConstants.PACKAGE_HASH_KEY]);
           Logger.info(TAG, `isFailedHash--failedPackageHash=${failedPackageHash}`);
           if (packageHash === failedPackageHash) {
             Logger.info(TAG, 'isFailedHash--true')
@@ -99,15 +91,17 @@ export class SettingsManager {
 
   public removeFailedUpdates(): void {
     this.preferences.delete(CodePushConstants.FAILED_UPDATES_KEY);
+    this.preferences?.flush()
   }
 
   public removePendingUpdate(): void {
-    this.preferences.delete(CodePushConstants.PENDING_UPDATE_KEY);
+    this.preferences?.delete(CodePushConstants.PENDING_UPDATE_KEY);
+    this.preferences?.flush()
   }
 
   public saveFailedUpdate(failedPackage: Record<string, any>): void {
     try {
-      if (this.isFailedHash(failedPackage.get(CodePushConstants.PACKAGE_HASH_KEY) as unknown as string)) {
+      if (this.isFailedHash(failedPackage[CodePushConstants.PACKAGE_HASH_KEY] as unknown as string)) {
         // Do not need to add the package if it is already in the failedUpdates.
         return;
       }
@@ -132,6 +126,7 @@ export class SettingsManager {
 
     failedUpdates.push(failedPackage);
     this.preferences.put(CodePushConstants.FAILED_UPDATES_KEY, failedUpdates.toString());
+    this.preferences?.flush()
   }
 
   public getLatestRollbackInfo(): Record<string, any> | null {
@@ -155,19 +150,20 @@ export class SettingsManager {
     let count = 0;
 
     if (latestRollbackInfo) {
-      const latestRollbackPackageHash = latestRollbackInfo.get(CodePushConstants.LATEST_ROLLBACK_PACKAGE_HASH_KEY);
+      const latestRollbackPackageHash = latestRollbackInfo[CodePushConstants.LATEST_ROLLBACK_PACKAGE_HASH_KEY];
       if (latestRollbackPackageHash === packageHash) {
-        count = latestRollbackInfo.get(CodePushConstants.LATEST_ROLLBACK_COUNT_KEY) as number;
+        count = latestRollbackInfo[CodePushConstants.LATEST_ROLLBACK_COUNT_KEY] as number;
       }
     } else {
       latestRollbackInfo = {};
     }
 
     try {
-      latestRollbackInfo.set(CodePushConstants.LATEST_ROLLBACK_PACKAGE_HASH_KEY, packageHash);
-      latestRollbackInfo.set(CodePushConstants.LATEST_ROLLBACK_TIME_KEY, Date.now());
-      latestRollbackInfo.set(CodePushConstants.LATEST_ROLLBACK_COUNT_KEY, count + 1);
+      latestRollbackInfo[CodePushConstants.LATEST_ROLLBACK_PACKAGE_HASH_KEY] = packageHash;
+      latestRollbackInfo[CodePushConstants.LATEST_ROLLBACK_TIME_KEY] = Date.now();
+      latestRollbackInfo[CodePushConstants.LATEST_ROLLBACK_COUNT_KEY] = count + 1;
       this.preferences.put(CodePushConstants.LATEST_ROLLBACK_INFO_KEY, JSON.stringify(latestRollbackInfo));
+      this.preferences?.flush()
     } catch (error) {
       throw new CodePushUnknownException("Unable to save latest rollback info.", error);
     }
@@ -178,8 +174,9 @@ export class SettingsManager {
     pendingUpdate[CodePushConstants.PENDING_UPDATE_HASH_KEY] = packageHash;
     pendingUpdate[CodePushConstants.PENDING_UPDATE_IS_LOADING_KEY] = isLoading;
     try {
-      Logger.info(TAG, `installPackage--pendingUpdate=${pendingUpdate}`);
-      this.preferences?.put(CodePushConstants.PENDING_UPDATE_KEY, JSON.stringify(pendingUpdate));
+      Logger.info(TAG, `savePendingUpdate--pendingUpdate: ${JSON.stringify(pendingUpdate)}`);
+      this.preferences?.putSync(CodePushConstants.PENDING_UPDATE_KEY, JSON.stringify(pendingUpdate));
+      this.preferences?.flush()
     } catch (error) {
       throw new CodePushUnknownException("Unable to save pending update.", error);
     }

@@ -11,7 +11,7 @@ export interface Spec extends TurboModule {
   downloadUpdate(updatePackage: Object, notifyProgress: boolean): Promise<void>;
   getConfiguration(): Promise<object>;
   getUpdateMetadata(updateState: number): Promise<object>;
-  getNewStatusReport(): void;
+  getNewStatusReport(): Promise<object>;
   installUpdate(updatePackage: Object, installMode: number, minimumBackgroundDuration: number): Promise<object>;
   getLatestRollbackInfo(): Promise<string | null>;
   setLatestRollbackInfo(packageHash: string): Promise<string | null>;

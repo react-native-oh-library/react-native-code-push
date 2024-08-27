@@ -21,15 +21,7 @@ export class CodePushTelemetryManager {
   private readonly STATUS_KEY: string = "status";
 
   constructor(context: Context) {
-    dataPreferences.getPreferences(context, CodePushConstants.CODE_PUSH_PREFERENCES,
-      (err: BusinessError, val: dataPreferences.Preferences) => {
-        if (err) {
-          console.error("Failed to get preferences. code =" + err.code + ", message =" + err.message);
-          return;
-        }
-        this.preferences = val;
-        Logger.info(TAG, "Succeeded in getting preferences.");
-      })
+    this.preferences = dataPreferences.getPreferencesSync(context, {name: CodePushConstants.CODE_PUSH_PREFERENCES})
   }
 
   public getBinaryUpdateReport(appVersion: string): Record<string, string> | null {
@@ -88,14 +80,17 @@ export class CodePushTelemetryManager {
 
   public getUpdateReport(currentPackage: Record<string, any>): Record<string, any> {
     const currentPackageIdentifier: string = this.getPackageStatusReportIdentifier(currentPackage);
+    Logger.info(TAG, `getUpdateReport currentPackageIdentifier ${currentPackageIdentifier}`);
     const previousStatusReportIdentifier: string = this.getPreviousStatusReportIdentifier();
+    Logger.info(TAG, `getUpdateReport previousStatusReportIdentifier ${previousStatusReportIdentifier}`);
     let reportMap: Record<string, any> = null;
     if (currentPackageIdentifier != null) {
       if (previousStatusReportIdentifier == null) {
         this.clearRetryStatusReport();
         reportMap = {};
-        reportMap.set(this.PACKAGE_KEY, currentPackage);
-        reportMap.set(this.STATUS_KEY, this.DEPLOYMENT_SUCCEEDED_STATUS);
+        reportMap[this.PACKAGE_KEY] = currentPackage
+        reportMap[this.STATUS_KEY] = this.DEPLOYMENT_SUCCEEDED_STATUS;
+        reportMap[this.PREVIOUS_LABEL_OR_APP_VERSION_KEY] = null;
       } else if (previousStatusReportIdentifier != currentPackageIdentifier) {
         this.clearRetryStatusReport();
         reportMap = {};
@@ -103,15 +98,15 @@ export class CodePushTelemetryManager {
           let previousDeploymentKey: string =
             this.getDeploymentKeyFromStatusReportIdentifier(previousStatusReportIdentifier);
           let previousLabel: string = this.getVersionLabelFromStatusReportIdentifier(previousStatusReportIdentifier);
-          reportMap.set(this.PACKAGE_KEY, currentPackage);
-          reportMap.set(this.STATUS_KEY, this.DEPLOYMENT_SUCCEEDED_STATUS);
-          reportMap.set(this.PREVIOUS_DEPLOYMENT_KEY_KEY, previousDeploymentKey);
-          reportMap.set(this.PREVIOUS_LABEL_OR_APP_VERSION_KEY, previousLabel);
+          reportMap[this.PACKAGE_KEY] = currentPackage;
+          reportMap[this.STATUS_KEY] = this.DEPLOYMENT_SUCCEEDED_STATUS;
+          reportMap[this.PREVIOUS_DEPLOYMENT_KEY_KEY] = previousDeploymentKey;
+          reportMap[this.PREVIOUS_LABEL_OR_APP_VERSION_KEY] = previousLabel;
         } else {
           // Previous status report was with a binary app version.
-          reportMap.set(this.PACKAGE_KEY, currentPackage);
-          reportMap.set(this.STATUS_KEY, this.DEPLOYMENT_SUCCEEDED_STATUS);
-          reportMap.set(this.PREVIOUS_LABEL_OR_APP_VERSION_KEY, previousStatusReportIdentifier);
+          reportMap[this.PACKAGE_KEY] = currentPackage;
+          reportMap[this.STATUS_KEY] = this.DEPLOYMENT_SUCCEEDED_STATUS;
+          reportMap[this.PREVIOUS_LABEL_OR_APP_VERSION_KEY] = previousStatusReportIdentifier;
         }
       }
     }
@@ -121,27 +116,29 @@ export class CodePushTelemetryManager {
 
   public recordStatusReported(statusReport: Record<string, any>): void {
     // We don't need to record rollback reports, so exit early if that's what was specified.
-    if (statusReport.hasKey(this.STATUS_KEY) && this.DEPLOYMENT_FAILED_STATUS === statusReport.get(this.STATUS_KEY)) {
+    if (statusReport[this.STATUS_KEY] && this.DEPLOYMENT_FAILED_STATUS === statusReport[this.STATUS_KEY]) {
       return;
     }
 
-    if (statusReport.hasKey(this.APP_VERSION_KEY)) {
-      this.saveStatusReportedForIdentifier(statusReport.get(this.APP_VERSION_KEY));
-    } else if (statusReport.hasKey(this.PACKAGE_KEY)) {
-      const packageIdentifier: string = this.getPackageStatusReportIdentifier(statusReport.get(this.PACKAGE_KEY));
+    Logger.info(TAG, `recordStatusReported statusReport ${JSON.stringify(statusReport)}`)
+    if (statusReport[this.APP_VERSION_KEY]) {
+      this.saveStatusReportedForIdentifier(statusReport[this.APP_VERSION_KEY]);
+    } else if (statusReport[this.PACKAGE_KEY]) {
+      const packageIdentifier: string = this.getPackageStatusReportIdentifier(statusReport[this.PACKAGE_KEY]);
       this.saveStatusReportedForIdentifier(packageIdentifier);
     }
   }
 
   public saveStatusReportForRetry(statusReport: Record<string, any>): void {
     this.preferences.put(this.RETRY_DEPLOYMENT_REPORT_KEY, JSON.stringify(statusReport));
+    this.preferences.flush()
   }
 
   private getPackageStatusReportIdentifier(updatePackage: Record<string, any>): string {
     // Because deploymentKeys can be dynamically switched, we use a
     // combination of the deploymentKey and label as the packageIdentifier.
-    const deploymentKey: string = updatePackage.get(this.DEPLOYMENT_KEY_KEY);
-    const label: string = updatePackage.get(this.LABEL_KEY);
+    const deploymentKey: string = updatePackage[this.DEPLOYMENT_KEY_KEY];
+    const label: string = updatePackage[this.LABEL_KEY];
 
     if (deploymentKey != null && label != null) {
       return deploymentKey + ":" + label;
@@ -181,6 +178,8 @@ export class CodePushTelemetryManager {
   }
 
   private saveStatusReportedForIdentifier(appVersionOrPackageIdentifier: string): void {
-    this.preferences.put(this.LAST_DEPLOYMENT_REPORT_KEY, appVersionOrPackageIdentifier);
+    Logger.info(TAG, `appVersionOrPackageIdentifier: ${appVersionOrPackageIdentifier}`);
+    this.preferences?.put(this.LAST_DEPLOYMENT_REPORT_KEY, appVersionOrPackageIdentifier);
+    this.preferences.flush()
   }
 }

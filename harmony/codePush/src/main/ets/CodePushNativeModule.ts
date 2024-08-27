@@ -11,7 +11,6 @@ import { SettingsManager } from './SettingsManager';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { CodePushUtils } from './CodePushUtils';
 import { CodePushUpdateState } from './CodePushUpdateState';
-
 import { CodePushMalformedDataException } from './CodePushMalformedDataException';
 import { CodePushUnknownException } from './CodePushUnknownException';
 import { TM } from '@rnoh/react-native-openharmony/generated/ts';
@@ -57,6 +56,8 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
   constructor(rnContext: UITurboModuleContext, codePush: CodePush) {
     super(rnContext);
     Logger.info(TAG, `constructor start`)
+    this.mTelemetryManager = new CodePushTelemetryManager(context);
+    this.mSettingsManager = new SettingsManager()
     dataPreferences.getPreferences(context, CodePushConstants.CODE_PUSH_PREFERENCES,
       (err: BusinessError, val: dataPreferences.Preferences) => {
         if (err) {
@@ -97,7 +98,7 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
 
   async isFailedUpdate(packageHash: string): Promise<boolean> {
     try {
-      return new SettingsManager().isFailedHash(packageHash);
+      return this.mSettingsManager.isFailedHash(packageHash);
     } catch (CodePushUnknownException) {
       Logger.error(TAG, `isFailedUpdate error: ${JSON.stringify(CodePushUnknownException)}`)
       return CodePushUnknownException;
@@ -147,7 +148,7 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
       if (currentPackage[CodePushConstants.PACKAGE_HASH_KEY]) {
         Logger.info(TAG, `currentPackage hasKey packageHash`);
         let currentHash = currentPackage[CodePushConstants.PACKAGE_HASH_KEY] as string;
-        currentUpdateIsPending = new SettingsManager().isPendingUpdate(currentHash);
+        currentUpdateIsPending = this.mSettingsManager.isPendingUpdate(currentHash);
       }
 
       if (updateState == CodePushUpdateState.PENDING.valueOf() && !currentUpdateIsPending) {
@@ -194,13 +195,8 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
     }
   }
 
-  async getNewStatusReport(): Promise<void> {
-    this.mTelemetryManager = new CodePushTelemetryManager(context);
-    this.mSettingsManager == null && (this.mSettingsManager = new SettingsManager())
+  async getNewStatusReport(): Promise<object> {
     this.mUpdateManager == null && (this.mUpdateManager = new CodePushUpdateManager(''))
-    Logger.info(TAG, `CodePushNativeModule getNewStatusReport: ${this.mTelemetryManager}`);
-    Logger.info(TAG, `CodePushNativeModule getNewStatusReport: ${this.mSettingsManager}`);
-    Logger.info(TAG, `CodePushNativeModule getNewStatusReport: ${this.mUpdateManager}`);
     try {
       if (this.mCodePush.needToReportRollback()) {
         this.mCodePush.setNeedToReportRollback(false);
@@ -210,8 +206,7 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
             let lastFailedPackage = failedUpdates[failedUpdates.length - 1];
             let failedStatusReport = this.mTelemetryManager.getRollbackReport(lastFailedPackage);
             if (failedStatusReport != null) {
-              Promise.resolve(failedStatusReport);
-              return;
+              return Promise.resolve(failedStatusReport);
             }
           } catch (err) {
             throw new CodePushUnknownException("Unable to read failed updates information stored in SharedPreferences.",
@@ -220,12 +215,13 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
         }
       } else if (this.mCodePush.didUpdate()) {
         let currentPackage = this.mUpdateManager.getCurrentPackage();
+        Logger.info(TAG, `getNewStatusReport currentPackage: ${JSON.stringify(currentPackage)}`);
         if (currentPackage != null) {
           let newPackageStatusReport =
             this.mTelemetryManager.getUpdateReport(currentPackage);
+          Logger.info(TAG, `newPackageStatusReport: ${JSON.stringify(newPackageStatusReport)}`);
           if (newPackageStatusReport != null) {
-            Promise.resolve(newPackageStatusReport);
-            return null;
+            return Promise.resolve(newPackageStatusReport);
           }
         }
       } else if (this.mCodePush.isRunningBinaryVersion()) {
@@ -236,9 +232,9 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
         }
       } else {
         let retryStatusReport = this.mTelemetryManager.getRetryStatusReport();
+        Logger.info(TAG, `retryStatusReport: ${JSON.stringify(retryStatusReport)}`);
         if (retryStatusReport != null) {
-          Promise.resolve(retryStatusReport);
-          return null;
+          return Promise.resolve(retryStatusReport);
         }
       }
       Promise.resolve("");
@@ -255,13 +251,13 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
     try {
       this.installMode = installMode
       Logger.info(TAG, 'installPackage--CodePushNativeModule-entry')
-      new CodePushUpdateManager('').installPackage(updatePackage, new SettingsManager().isPendingUpdate(null))
+      new CodePushUpdateManager('').installPackage(updatePackage, this.mSettingsManager.isPendingUpdate(null))
       Logger.info(TAG, 'installPackage--CodePushNativeModule-end')
       let pendingHash = updatePackage[CodePushConstants.PACKAGE_HASH_KEY];
       if (pendingHash == null) {
         throw new CodePushUnknownException("Update package to be installed has no hash.");
       } else {
-        new SettingsManager().savePendingUpdate(pendingHash, /* isLoading */false);
+        this.mSettingsManager.savePendingUpdate(pendingHash, /* isLoading */false);
       }
       Logger.info(TAG, `installPackage--CodePushNativeModule-end3=${installMode},CodePushInstallMode.IMMEDIATE`);
 
@@ -299,7 +295,7 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
 
   async setLatestRollbackInfo(packageHash: string): Promise<null | string> {
     try {
-      new SettingsManager().setLatestRollbackInfo(packageHash);
+      this.mSettingsManager.setLatestRollbackInfo(packageHash);
       return Promise.resolve(packageHash);
     } catch (e) {
       CodePushUtils.log(e);
@@ -359,7 +355,7 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
 
   async notifyApplicationReady() {
     try {
-      new SettingsManager().removePendingUpdate();
+      this.mSettingsManager.removePendingUpdate();
       return Promise.resolve("");
     } catch (err) {
       CodePushUtils.log(err);
@@ -413,7 +409,7 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
   public getLatestRollbackInfo(): Promise<string | null> {
     return new Promise((resolve, reject) => {
       try {
-        let latestRollbackInfo: object = new SettingsManager().getLatestRollbackInfo();
+        let latestRollbackInfo: object = this.mSettingsManager.getLatestRollbackInfo();
         if (latestRollbackInfo != null) {
           resolve(JSON.stringify(latestRollbackInfo));
         } else {
