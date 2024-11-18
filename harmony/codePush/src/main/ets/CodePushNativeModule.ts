@@ -14,6 +14,7 @@ import { CodePushUpdateState } from './CodePushUpdateState';
 import { CodePushMalformedDataException } from './CodePushMalformedDataException';
 import { CodePushUnknownException } from './CodePushUnknownException';
 import { TM } from '@rnoh/react-native-openharmony/generated/ts';
+import { window } from '@kit.ArkUI';
 
 import Logger from './Logger';
 
@@ -47,7 +48,8 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
   private mTelemetryManager: CodePushTelemetryManager | null = null;
   private mSettingsManager: SettingsManager | null = null;
   private mUpdateManager: CodePushUpdateManager | null = null;
-  private installMode: number = 1;
+  private installMode: number = -1;
+  private ready: boolean = false;
 
   sync(): Promise<unknown> {
     throw new Error('Method not implemented.');
@@ -250,6 +252,24 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
 
     try {
       this.installMode = installMode
+      this.ctx.uiAbilityContext.windowStage.on('windowStageEvent', (data) => {
+        if(data === window.WindowStageEventType.SHOWN) {
+          Logger.info(TAG, `Switch to foreground：${this.installMode}`)
+          if(this.installMode === 2 && this.ready === true) {
+            this.ctx.devToolsController.eventEmitter.emit("RELOAD", { reason: 'HotReload2' })
+          }
+        }
+
+        if(data === window.WindowStageEventType.HIDDEN) {
+          Logger.info(TAG, `Switch to background：${this.installMode}`)
+          if(this.installMode === 3 && this.ready === true) {
+            this.ctx.devToolsController.eventEmitter.emit("RELOAD", { reason: 'HotReload2' })
+          }
+        }
+
+        Logger.info(TAG, 'Succeeded in enabling the listener for window stage event changes. Data: ' +
+        JSON.stringify(data));
+      });
       Logger.info(TAG, 'installPackage--CodePushNativeModule-entry')
       new CodePushUpdateManager('').installPackage(updatePackage, this.mSettingsManager.isPendingUpdate(null))
       Logger.info(TAG, 'installPackage--CodePushNativeModule-end')
@@ -396,11 +416,12 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
       const new_getBundleCont = sx_latestJSBundleFile + '/Bundles';
       fs.renameSync(getBundleCont,new_getBundleCont);
       fs.copyDirSync(new_getBundleCont,local_address,1)
+      this.ready = true
     }catch (error) {
       Logger.error(TAG, `restartAppInternal--loadBundle-end,error=${JSON.stringify(error)}`);
     }
     Logger.info(TAG, "restartAppInternal--loadBundle-end");
-    if(this.installMode === 0){
+    if(this.installMode === 0 || this.installMode === -1){
       this.ctx.devToolsController.eventEmitter.emit("RELOAD", { reason: 'HotReload2' })
     }
     Logger.info(TAG, "restartAppInternal RELOAD end");
@@ -422,5 +443,3 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
     })
   }
 }
-
-
