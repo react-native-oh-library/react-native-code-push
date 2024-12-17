@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "react-native-code-push",
+        "License": "MIT License",
+        "License File": "https://github.com/microsoft/react-native-code-push/blob/master/LICENSE.md",
+        "Version Number": "8.2.2",
+        "Owner" : "xiafeng@huawei.com",
+        "Upstream URL": "https://github.com/microsoft/react-native-code-push",
+        "Description": "React Native plugin for the CodePush service"
+    }
+]
