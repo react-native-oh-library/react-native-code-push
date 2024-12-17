@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd. All rights reserved
+ * Use of this source code is governed by a MIT license that can be
+ * found in the LICENSE file.
+ */
+
 export class CodePushConstants {
   public static readonly ASSETS_BUNDLE_PREFIX: string = "assets://";
   public static readonly BINARY_MODIFIED_TIME_KEY: string = "binaryModifiedTime";
