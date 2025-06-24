@@ -424,7 +424,7 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
           });
         }
 
-        // Since the install button should be placed to the 
+        // Since the install button should be placed to the
         // right of any other button, add it last
         dialogButtons.push({
           text: installButtonText,
@@ -454,6 +454,7 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
 };
 
 let CodePush;
+let changeListener;
 
 function codePushify(options = {}) {
   let React;
@@ -477,60 +478,84 @@ function codePushify(options = {}) {
 
   var decorator = (RootComponent) => {
     const extended = class CodePushComponent extends React.Component {
+      constructor(props) {
+        super(props);
+        this.rootComponentRef = null;
+        this.syncStatusCallback = null;
+        this.downloadProgressCallback = null;
+        this.handleBinaryVersionMismatchCallback = null;
+        this.handleAppStateChange = this.handleAppStateChange.bind(this);
+      }
+
+      handleAppStateChange(newState) {
+        if (newState === "active") {
+          CodePush.sync(
+              options,
+              this.syncStatusCallback,
+              this.downloadProgressCallback
+          );
+        }
+      }
+
       componentDidMount() {
+        if (this.rootComponentRef) {
+          const rootComponentInstance = this.rootComponentRef;
+
+          if (rootComponentInstance.codePushStatusDidChange) {
+            this.syncStatusCallback = rootComponentInstance.codePushStatusDidChange.bind(
+                rootComponentInstance
+            );
+          }
+
+          if (rootComponentInstance.codePushDownloadDidProgress) {
+            this.downloadProgressCallback = rootComponentInstance.codePushDownloadDidProgress.bind(
+                rootComponentInstance
+            );
+          }
+
+          if (rootComponentInstance.codePushOnBinaryVersionMismatch) {
+            this.handleBinaryVersionMismatchCallback = rootComponentInstance.codePushOnBinaryVersionMismatch.bind(
+                rootComponentInstance
+            );
+          }
+        }
+
         if (options.checkFrequency === CodePush.CheckFrequency.MANUAL) {
           CodePush.notifyAppReady();
         } else {
-          let rootComponentInstance = this.refs.rootComponent;
+          CodePush.sync(
+              options,
+              this.syncStatusCallback,
+              this.downloadProgressCallback,
+              this.handleBinaryVersionMismatchCallback
+          );
 
-          let syncStatusCallback;
-          if (rootComponentInstance && rootComponentInstance.codePushStatusDidChange) {
-            syncStatusCallback = rootComponentInstance.codePushStatusDidChange;
-            if (rootComponentInstance instanceof React.Component) {
-              syncStatusCallback = syncStatusCallback.bind(rootComponentInstance);
-            }
-          }
-
-          let downloadProgressCallback;
-          if (rootComponentInstance && rootComponentInstance.codePushDownloadDidProgress) {
-            downloadProgressCallback = rootComponentInstance.codePushDownloadDidProgress;
-            if (rootComponentInstance instanceof React.Component) {
-              downloadProgressCallback = downloadProgressCallback.bind(rootComponentInstance);
-            }
-          }
-
-          let handleBinaryVersionMismatchCallback;
-          if (rootComponentInstance && rootComponentInstance.codePushOnBinaryVersionMismatch) {
-            handleBinaryVersionMismatchCallback = rootComponentInstance.codePushOnBinaryVersionMismatch;
-            if (rootComponentInstance instanceof React.Component) {
-              handleBinaryVersionMismatchCallback = handleBinaryVersionMismatchCallback.bind(rootComponentInstance);
-            }
-          }
-
-          CodePush.sync(options, syncStatusCallback, downloadProgressCallback, handleBinaryVersionMismatchCallback);
           if (options.checkFrequency === CodePush.CheckFrequency.ON_APP_RESUME) {
-            ReactNative.AppState.addEventListener("change", (newState) => {
-              newState === "active" && CodePush.sync(options, syncStatusCallback, downloadProgressCallback);
-            });
+            changeListener = ReactNative.AppState.addEventListener("change", this.handleAppStateChange);
           }
+        }
+      }
+
+      componentWillUnmount() {
+        if (options.checkFrequency === CodePush.CheckFrequency.ON_APP_RESUME && changeListener) {
+          changeListener.remove()
         }
       }
 
       render() {
         const props = { ...this.props };
-
-        // we can set ref property on class components only (not stateless)
-        // check it by render method
-        if (RootComponent.prototype.render) {
-          props.ref = "rootComponent";
+        if (RootComponent.prototype && RootComponent.prototype.render) {
+          props.ref = (component) => {
+            this.rootComponentRef = component;
+          };
         }
 
-        return <RootComponent {...props} />
+        return <RootComponent {...props} />;
       }
-    }
+    };
 
     return hoistStatics(extended, RootComponent);
-  }
+  };
 
   if (typeof options === "function") {
     // Infer that the root component was directly passed to us.

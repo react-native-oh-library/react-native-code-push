@@ -8,16 +8,16 @@ import type { TurboModule } from "react-native/Libraries/TurboModule/RCTExport";
 import { TurboModuleRegistry } from "react-native";
 
 export interface Spec extends TurboModule {
-  sync(): Promise<any>;
+  sync(): Promise<unknown>;
   isFailedUpdate(packageHash: string): Promise<boolean>;
   allow(): void;
   clearPendingRestart(): void;
   disallow(): void;
   restartApp(onlyIfUpdateIsPending: boolean): void;
   downloadUpdate(updatePackage: Object, notifyProgress: boolean): Promise<void>;
-  getConfiguration(): Promise<object>;
+  getConfiguration(): Promise<Object>;
   getUpdateMetadata(updateState: number): Promise<object>;
-  getNewStatusReport(): Promise<object>;
+  getNewStatusReport(): Promise<Object>;
   installUpdate(updatePackage: Object, installMode: number, minimumBackgroundDuration: number): Promise<object>;
   getLatestRollbackInfo(): Promise<string | null>;
   setLatestRollbackInfo(packageHash: string): Promise<string | null>;

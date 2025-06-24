@@ -412,16 +412,21 @@ export class CodePushNativeModule extends UITurboModule implements TM.RTNCodePus
     let currentPackageHash: string = info[CodePushConstants.CURRENT_PACKAGE_KEY];
     const sx_latestJSBundleFile = context.filesDir + '/CodePush/' + currentPackageHash;
     const local_address = context.filesDir;
-    let listFileOption: ListFileOptions = {
-      recursion: false,
-      listNum: 0
-    }
+    // let listFileOption: ListFileOptions = {
+    //   recursion: false,
+    //   listNum: 0
+    // }
     try {
-      let filenames = fs.listFileSync(sx_latestJSBundleFile, listFileOption);
-      const getBundleCont = sx_latestJSBundleFile + '/' + filenames[0];
-      const new_getBundleCont = sx_latestJSBundleFile + '/Bundles';
-      fs.renameSync(getBundleCont,new_getBundleCont);
-      fs.copyDirSync(new_getBundleCont,local_address,1)
+      // let filenames = fs.listFileSync(sx_latestJSBundleFile, listFileOption);
+      // const getBundleCont = sx_latestJSBundleFile + '/' + filenames[0];
+      // const new_getBundleCont = sx_latestJSBundleFile + '/Bundles';
+      // fs.renameSync(getBundleCont,new_getBundleCont);
+      // fs.copyDirSync(new_getBundleCont,local_address,1)
+      fs.copyDirSync(sx_latestJSBundleFile, local_address, 1)
+      if (fs.accessSync(local_address + '/Bundles')) {
+        fs.rmdirSync(local_address + '/Bundles')
+      }
+      fs.renameSync(local_address + '/' + currentPackageHash, local_address + '/Bundles');
       this.ready = true
     }catch (error) {
       Logger.error(TAG, `restartAppInternal--loadBundle-end,error=${JSON.stringify(error)}`);
